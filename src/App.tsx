@@ -1,17 +1,26 @@
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import Users from "./pages/Users";
+import { ProtectedRoute } from "./routes/ProtectedRoute";
 
 function App() {
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-      <div className="bg-white p-10 rounded-2xl shadow-2xl text-center">
-        <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-purple-600">
-          Tailwind is Active! 🚀
-        </h1>
-        <p className="mt-4 text-gray-600 font-medium">
-          If you see this styled, you've successfully bypassed the path error.
-        </p>
-      </div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+
+          {/* Admin-only routes */}
+          <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+            <Route path="/users" element={<Users />} />
+          </Route>
+        </Route>
+
+        {/* later: <Route path="/login" element={<Login />} /> */}
+      </Routes>
+    </BrowserRouter>
   );
 }
 
