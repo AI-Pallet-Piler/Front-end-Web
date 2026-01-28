@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 
-// 1. Define the shape of your product data
+// Define the shape of your product data
 interface ProductData {
   name: string;
   sku: string;
@@ -25,7 +25,7 @@ interface PalletItemsData {
 }
 
 const AddProduct = () => {
-  // 2. Setup state to hold the form data
+  // Setup state to hold the form data
   const [productData, setProductData] = useState<ProductData>({
     name: '',
     sku: '',
@@ -56,16 +56,16 @@ const AddProduct = () => {
       ...prev,
       [name]: type === 'checkbox' 
         ? (e.target as HTMLInputElement).checked 
-        : type === 'number' ? Number(value) : value,
+        : type === 'number' ? Math.max(0, Number(value)) : value,// Ensures no negative numbers
     }));
   };
 
-  // --- HANDLER 2: For Inventory Fields (Quantity, etc) ---
+  // --- HANDLER 2: For PALLET Fields (Quantity, etc) ---
   const handlePalletItemsChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPalletItemsData((prev) => ({
       ...prev,
-      [name]: Number(value), // Assuming these are mostly numbers
+      [name]: Math.max(0, Number(value))// Ensures no negative numbers
     }));
   };
 
@@ -102,6 +102,17 @@ const AddProduct = () => {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700">Description</label>
+              <textarea name="description" rows={3}
+                value={productData.description} onChange={handleProductChange}
+                className="w-full p-2 border rounded-md" placeholder="Product description..." />
+            </div>
+            <div className="space-y-2">
+            </div>
+          </div>
+
           <div className="grid grid-cols-4 gap-2">
             <div>
               <label className="block text-xs font-medium text-slate-500">Length (cm)</label>
@@ -132,11 +143,11 @@ const AddProduct = () => {
 
         {/* === SECTION 2: INVENTORY DETAILS === */}
         <div className="space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <h3 className="text-sm font-bold text-green-600 uppercase tracking-wider border-b border-green-200 pb-2">2. Initial Stock Level</h3>
+          <h3 className="text-sm font-bold text-green-600 uppercase tracking-wider border-b border-green-200 pb-2">2. PALLET DEFINITION</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700">Initial Quantity</label>
+              <label className="block text-sm font-medium text-slate-700">Items per pallet</label>
               <input 
                 type="number" 
                 name="quantity" // This matches 'quantity' in PalletItemsData
@@ -146,12 +157,13 @@ const AddProduct = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700">Target Pallet ID (Optional)</label>
+              <label className="block text-sm font-medium text-slate-700">Pallet Type (Insert ID)</label>
               <input 
-                type="text" 
-                disabled 
-                placeholder="Auto-assigned" 
-                className="w-full p-2 border border-slate-200 bg-slate-100 text-slate-400 rounded-md cursor-not-allowed" 
+                type="number"
+                name="pallet_id" // This matches 'pallet_id' in PalletItemsData
+                value={palletItemsData.pallet_id}
+                onChange={handlePalletItemsChange} // Uses the SECOND handler
+                className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-green-500 outline-none" 
               />
             </div>
           </div>
