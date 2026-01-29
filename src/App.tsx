@@ -3,7 +3,7 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
-import ViewUsers from "./pages/ViewUsers";
+import ManageUsers from "./pages/ManageUsers";
 
 function App() {
   return (
@@ -13,7 +13,7 @@ function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
 
-          <Route path="/users" element={<ViewUsers />} /> {/* route to display users */}
+          <Route path="/users" element={<ManageUsers />} /> {/* route to display users */}
 
           {/* Admin-only routes */}
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
