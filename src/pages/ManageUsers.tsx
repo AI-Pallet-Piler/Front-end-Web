@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 
 // API Configuration
-// Best Practice: Use environment variables in real apps (e.g., import.meta.env.VITE_API_URL)
-const API_BASE_URL = "http://localhost:8080"; 
+const API_BASE_URL = "http://localhost:8080/api"; 
 
 interface UserData {
   id: number;
@@ -23,13 +22,14 @@ const ViewUsers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/v1/users/get`);
+        // UPDATED: Removing the /{id} implies "Get All Users" in REST
+        const res = await fetch(`${API_BASE_URL}/v1/users`);
+        
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
         setUsers(data); 
       } catch (error) {
         console.error("Error fetching users:", error);
-        // Optional: Set an error state here to show a message to the user
       } finally {
         setIsLoading(false);
       }
@@ -43,11 +43,11 @@ const ViewUsers = () => {
     if (!window.confirm("Are you sure you want to remove this user?")) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/users/delete/${id}`, { method: 'DELETE' });
+      // UPDATED: Consistent v1 pattern
+      const res = await fetch(`${API_BASE_URL}/v1/users/${id}`, { method: 'DELETE' });
       
       if (!res.ok) throw new Error("Failed to delete");
 
-      // Update UI only if API call succeeds
       setUsers((prev) => prev.filter((user) => user.id !== id));
       
     } catch (error) {
@@ -71,7 +71,8 @@ const ViewUsers = () => {
     if (!editingUser) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/users/update/${editingUser.id}`, {
+      // UPDATED: Consistent v1 pattern using PUT
+      const res = await fetch(`${API_BASE_URL}/v1/users/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingUser),
@@ -81,9 +82,7 @@ const ViewUsers = () => {
       
       const updatedUser = await res.json(); 
       
-      // Update local state with the SERVER response (Single Source of Truth)
       setUsers(prev => prev.map(u => (u.id === editingUser.id ? updatedUser : u)));
-      
       setEditingUser(null); 
       alert("User updated successfully!");
     } catch (error) {
@@ -188,7 +187,6 @@ const ViewUsers = () => {
                 ))
               ) : (
                 <tr>
-                  {/* Fixed colSpan to match table header count (4) */}
                   <td colSpan={4} className="p-8 text-center text-slate-400 italic">
                     No users found.
                   </td>
@@ -220,7 +218,6 @@ const ViewUsers = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
                 <select 
                   value={editingUser.role}
-                  // Added type assertion safety here
                   onChange={(e) => handleEditChange('role', e.target.value as UserData['role'])}
                   className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                 >
