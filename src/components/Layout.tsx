@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { useAuth } from "../context/AuthContext";
+import TopBar from "./TopBar";
 import Footer from "./Footer";
 
 const year = new Date().getFullYear();
@@ -19,11 +20,7 @@ const Layout = () => {
       {/* RIGHT SIDE */}
       <div className="flex-1 flex flex-col bg-slate-100 text-slate-800">
         {/* TOP BAR */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-center">
-          <span className="text-blue-400 font-mono text-sm">
-            [ Top Bar Placeholder ]
-          </span>
-        </header>
+        <TopBar />
 
         {/* MAIN CONTENT */}
         <main className="flex-1 px-10 py-8 overflow-y-auto">
