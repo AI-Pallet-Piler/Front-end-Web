@@ -24,7 +24,12 @@ const ViewUsers = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // const res = await fetch(`${API_BASE_URL}/users`);
+        /* API Call - Uncomment in real app
+        const res = await fetch(`${API_BASE_URL}/users`);
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        setUsers(data);
+        */
         
         // Simulate Network Delay
         await new Promise(resolve => setTimeout(resolve, 600));
@@ -66,7 +71,10 @@ const ViewUsers = () => {
     if (!confirmDelete) return;
 
     try {
-      // await fetch(`${API_BASE_URL}/users/${id}`, { method: 'DELETE' });
+      /* API Call - Uncomment in real app
+      const res = await fetch(`${API_BASE_URL}/users/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error("Failed to delete");
+      */
 
       // Update UI: Remove the user with this ID from the state
       setUsers((prev) => prev.filter((user) => user.id !== id));
@@ -93,7 +101,17 @@ const ViewUsers = () => {
     if (!editingUser) return;
 
     try {
-      // In real app: await fetch(`${API_BASE_URL}/users/${editingUser.id}`, { method: 'PUT', body: ... })
+      /* API Call - Uncomment in real app
+      const res = await fetch(`${API_BASE_URL}/users/${editingUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingUser),
+      });
+
+      if (!res.ok) throw new Error("Failed to update");
+      const updatedUser = await res.json(); // Use server response
+      setUsers(prev => prev.map(u => (u.id === editingUser.id ? updatedUser : u)));
+      */
       
       // Update local state: Find the user by ID and replace with new data
       setUsers(prev => prev.map(u => (u.id === editingUser.id ? editingUser : u)));
