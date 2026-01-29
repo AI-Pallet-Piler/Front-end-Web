@@ -59,6 +59,22 @@ const ViewUsers = () => {
     fetchUsers();
   }, []);
 
+  // Delete User Handler
+  const handleDelete = async (id: number) => {
+    const confirmDelete = window.confirm("Are you sure you want to remove this user?");
+    if (!confirmDelete) return;
+
+    try {
+      // await fetch(`${API_BASE_URL}/users/${id}`, { method: 'DELETE' });
+
+      // Update UI: Remove the user with this ID from the state
+      setUsers((prev) => prev.filter((user) => user.id !== id));
+      
+    } catch {
+      alert("Failed to delete user");
+    }
+  };
+
   // Search filter
   const filteredUsers = users.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,7 +87,7 @@ const ViewUsers = () => {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">👥 User Management</h2>
+          <h2 className="text-2xl font-bold text-slate-800">User Management</h2>
           <p className="text-slate-500 text-sm">View and manage system access.</p>
         </div>
         
@@ -84,7 +100,7 @@ const ViewUsers = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-4 pr-10 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-64"
           />
-          <span className="absolute right-3 top-2.5 text-slate-400">🔍</span>
+          <span className="absolute right-3 top-2.5 text-slate-400"></span>
         </div>
       </div>
 
@@ -137,11 +153,21 @@ const ViewUsers = () => {
                     <td className="p-4 text-sm text-slate-500 font-mono">
                       {user.last_login || "Never"}
                     </td>
+
+                    <td className="p-4 text-right">
+                      <button 
+                        onClick={() => handleDelete(user.id)}
+                        className="text-slate-400 hover:text-red-600 font-medium text-sm px-3 py-1 rounded hover:bg-red-50 transition-all"
+                        title="Remove User"
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={3} className="p-8 text-center text-slate-400 italic">
                     No users found.
                   </td>
                 </tr>
