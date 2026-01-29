@@ -18,6 +18,7 @@ const ViewUsers = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
 
   // Fetch users
   useEffect(() => {
@@ -72,6 +73,35 @@ const ViewUsers = () => {
       
     } catch {
       alert("Failed to delete user");
+    }
+  };
+
+  // 1. Open the modal with the user's data
+  const handleEditClick = (user: UserData) => {
+    setEditingUser({ ...user }); // Create a copy so we don't edit the table directly yet
+  };
+
+  // 2. Handle input changes inside the modal
+  const handleEditChange = (field: keyof UserData, value: string) => {
+    if (editingUser) {
+      setEditingUser({ ...editingUser, [field]: value });
+    }
+  };
+
+  // 3. Save changes
+  const handleSaveUser = async () => {
+    if (!editingUser) return;
+
+    try {
+      // In real app: await fetch(`${API_BASE_URL}/users/${editingUser.id}`, { method: 'PUT', body: ... })
+      
+      // Update local state: Find the user by ID and replace with new data
+      setUsers(prev => prev.map(u => (u.id === editingUser.id ? editingUser : u)));
+      
+      setEditingUser(null); // Close modal
+      alert("User updated successfully!");
+    } catch {
+      alert("Failed to update user");
     }
   };
 
@@ -153,12 +183,18 @@ const ViewUsers = () => {
                     <td className="p-4 text-sm text-slate-500 font-mono">
                       {user.last_login || "Never"}
                     </td>
-
-                    <td className="p-4 text-right">
+                    <td className="p-4 text-right space-x-2">
+                      {/* EDIT BUTTON */}
+                      <button 
+                        onClick={() => handleEditClick(user)}
+                        className="text-slate-400 hover:text-blue-600 font-medium text-sm px-3 py-1 rounded hover:bg-blue-50 transition-all"
+                      >
+                        Edit
+                      </button>
+                      {/* DELETE BUTTON */}
                       <button 
                         onClick={() => handleDelete(user.id)}
                         className="text-slate-400 hover:text-red-600 font-medium text-sm px-3 py-1 rounded hover:bg-red-50 transition-all"
-                        title="Remove User"
                       >
                         Delete
                       </button>
@@ -176,6 +212,55 @@ const ViewUsers = () => {
           </table>
         </div>
       )}
+
+      {/* --- EDIT MODAL (Popup) --- */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-96 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-slate-800 mb-4">Edit User</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <input 
+                  type="email" 
+                  value={editingUser.email}
+                  onChange={(e) => handleEditChange('email', e.target.value)}
+                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <select 
+                  value={editingUser.role}
+                  onChange={(e) => handleEditChange('role', e.target.value as 'Admin' | 'Manager' | 'picker')}
+                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                >
+                  <option value="picker">picker</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Admin">Admin</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button 
+                onClick={() => setEditingUser(null)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveUser}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="mt-4 text-xs text-slate-400 text-right">
         Total Users: {filteredUsers.length}
@@ -183,5 +268,7 @@ const ViewUsers = () => {
     </div>
   );
 };
+
+  
 
 export default ViewUsers;
