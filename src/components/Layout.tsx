@@ -2,7 +2,9 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { useAuth } from "../context/AuthContext";
 import TopBar from "./TopBar";
+import Footer from "./Footer";
 
+const year = new Date().getFullYear();
 const Layout = () => {
   const { user } = useAuth();
 
@@ -27,12 +29,17 @@ const Layout = () => {
           </div>
         </main>
 
-        {/* FOOTER (placeholder for now) */}
-        <footer className="h-20 bg-slate-900 text-white flex items-center justify-center">
-          <span className="text-red-300 font-mono text-sm">
-            [ Footer Placeholder ]
-          </span>
-        </footer>
+        {/* FOOTER ZONE */}
+    <footer className="h-16 bg-slate-900 text-slate-300 border-t border-white/10 px-8 flex items-center justify-center">
+      <span className="text-sm">
+        <span className="font-semibold text-white">WMS Platform</span>
+        <span className="text-slate-400">
+          {" "}
+          — Warehouse Management © {year}
+        </span>
+        <span className="text-slate-500"> • v0.1 (MVP)</span>
+      </span>
+    </footer>
       </div>
     </div>
   );
