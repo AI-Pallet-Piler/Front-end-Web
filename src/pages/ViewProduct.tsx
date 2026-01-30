@@ -198,30 +198,31 @@ export default function ViewProduct() {
 
         {/* TABLE */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[950px]">
-            <thead>
-              <tr className="text-left text-slate-500 text-sm border-b border-slate-100">
-                <th className="px-6 py-4 font-semibold">SKU</th>
-                <th className="px-6 py-4 font-semibold">Product Name</th>
-                <th className="px-6 py-4 font-semibold">Weight</th>
-                <th className="px-6 py-4 font-semibold">Dimensions</th>
-                <th className="px-6 py-4 font-semibold">Flags</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
+<table className="w-full min-w-[980px] table-fixed">
+  <thead>
+    <tr className="text-left text-slate-500 text-sm border-b border-slate-100">
+                <th className="px-6 py-4 font-semibold w-36">SKU</th>
+                <th className="px-6 py-4 font-semibold">Product</th>
+                <th className="px-6 py-4 font-semibold w-28">Weight</th>
+                <th className="px-6 py-4 font-semibold w-52">Dimensions</th>
+                <th className="px-6 py-4 font-semibold w-56">Flags</th>
+                <th className="px-6 py-4 font-semibold text-right w-40">Actions</th>
+    </tr>
+  </thead>
+
 
             <tbody className="divide-y divide-slate-100">
               {filteredProducts.map((p) => (
                 <tr key={p.product_id} className="hover:bg-slate-50">
-                  <td className="px-6 py-5 font-mono text-slate-700">{p.sku}</td>
+                  <td className="px-6 py-5 font-mono text-slate-700 whitespace-nowrap">{p.sku}</td>
 
                   <td className="px-6 py-5">
-                    <div className="font-medium text-slate-900">{p.name}</div>
-                    <div className="text-sm text-slate-400">{p.description || "—"}</div>
+                    <div className="font-semibold text-slate-900 leading-tight">{p.name}</div>
+                    <div className="mt-1 text-sm text-slate-400 line-clamp-2">{p.description || "—"}</div>
                   </td>
 
-                  <td className="px-6 py-5 text-slate-700">{p.weight_kg} kg</td>
-                  <td className="px-6 py-5 text-slate-700">{formatDimensions(p)}</td>
+                  <td className="px-6 py-5 text-slate-700 whitespace-nowrap">{p.weight_kg} kg</td>
+                  <td className="px-6 py-5 text-slate-700 whitespace-nowrap">{formatDimensions(p)}</td>
 
                   <td className="px-6 py-5">
                     <div className="flex flex-wrap gap-2">
@@ -235,12 +236,12 @@ export default function ViewProduct() {
                   </td>
 
                   <td className="px-6 py-5">
-                    <div className="flex items-center justify-end gap-3">
+                    <div className="flex items-center justify-end gap-2">
                       {/* VIEW PRODUCT DETAILS */}
                       <button
                         type="button"
                         onClick={() => setSelected(p)}
-                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+                        className="p-2 rounded-lg text-slate-600inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 cursor-pointer hover:text-blue-600"
                         title="View product"
                       >
                         <Eye className="h-5 w-5" />
@@ -250,19 +251,22 @@ export default function ViewProduct() {
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(p)}
-                        className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 cursor-pointer hover:text-red-600"
                         title="Delete product"
                       >
                         <Trash2 className="h-5 w-5" />
                       </button>
 
-                      {/* 
-                        EDIT PRODUCT
-                        ------------
-                        TODO (Future branch):
-                        - Put Edit Product button here
-                        - Implement edit page/modal in separate branch
-                      */}
+<Link
+  to={`/products/${p.product_id}/edit`}
+  state={{ product: p }} // pass product to edit page
+  className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer hover:text-green-600"
+  title="Edit product"
+>
+  ✎
+</Link>
+
+
                     </div>
                   </td>
                 </tr>
@@ -280,7 +284,7 @@ export default function ViewProduct() {
         </div>
       </div>
 
-      {/* ✅ CLEAN VIEW MODAL (COMPONENT) */}
+      {/*  CLEAN VIEW MODAL (COMPONENT) */}
       <ViewProductModal product={selected} onClose={() => setSelected(null)} />
 
       {/* DELETE CONFIRM MODAL */}
