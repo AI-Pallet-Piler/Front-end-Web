@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 
+const API_BASE_URL = "http://localhost:8080/api"; 
+
 interface UserData {
   user_id: number;
   name: string;
