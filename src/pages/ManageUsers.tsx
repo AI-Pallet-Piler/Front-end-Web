@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 const API_BASE_URL = "http://localhost:8080/api"; 
 
 interface UserData {
-  id: number;
+  user_id: number;
   email: string;
   role: 'Admin' | 'Manager' | 'picker';
   created_at: string;
@@ -24,12 +24,13 @@ const ViewUsers = () => {
       try {
         // UPDATED: Removing the /{id} implies "Get All Users" in REST
         const res = await fetch(`${API_BASE_URL}/v1/users`);
-        
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
-        setUsers(data); 
+        // Ensure users is always an array
+        setUsers(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching users:", error);
+        setUsers([]); // fallback to empty array on error
       } finally {
         setIsLoading(false);
       }
@@ -39,16 +40,16 @@ const ViewUsers = () => {
   }, []);
 
   // Delete User Handler
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (user_id: number) => {
     if (!window.confirm("Are you sure you want to remove this user?")) return;
 
     try {
       // UPDATED: Consistent v1 pattern
-      const res = await fetch(`${API_BASE_URL}/v1/users/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE_URL}/v1/users/${user_id}`, { method: 'DELETE' });
       
       if (!res.ok) throw new Error("Failed to delete");
 
-      setUsers((prev) => prev.filter((user) => user.id !== id));
+      setUsers((prev) => prev.filter((user) => user.user_id !== user_id));
       
     } catch (error) {
       console.error(error);
@@ -72,7 +73,7 @@ const ViewUsers = () => {
 
     try {
       // UPDATED: Consistent v1 pattern using PUT
-      const res = await fetch(`${API_BASE_URL}/v1/users/${editingUser.id}`, {
+      const res = await fetch(`${API_BASE_URL}/v1/users/${editingUser.user_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingUser),
@@ -82,7 +83,7 @@ const ViewUsers = () => {
       
       const updatedUser = await res.json(); 
       
-      setUsers(prev => prev.map(u => (u.id === editingUser.id ? updatedUser : u)));
+      setUsers(prev => prev.map(u => (u.user_id === editingUser.user_id ? updatedUser : u)));
       setEditingUser(null); 
       alert("User updated successfully!");
     } catch (error) {
@@ -138,7 +139,7 @@ const ViewUsers = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={user.user_id} className="hover:bg-slate-50 transition-colors">
                     
                     {/* 1. User Info */}
                     <td className="p-4">
@@ -177,7 +178,7 @@ const ViewUsers = () => {
                         Edit
                       </button>
                       <button 
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => handleDelete(user.user_id)}
                         className="text-slate-400 hover:text-red-600 font-medium text-sm px-3 py-1 rounded hover:bg-red-50 transition-all"
                       >
                         Delete
