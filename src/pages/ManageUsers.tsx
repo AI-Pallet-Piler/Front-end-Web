@@ -82,15 +82,19 @@ const ViewUsers = () => {
 
     try {
       // API Call - Create User (POST)
-      const res = await fetch(`${API_BASE_URL}/v1/users`, {
+      // We manually add 'hashed_password' here to satisfy the backend requirement
+      const res = await fetch(`${API_BASE_URL}/v1/users/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser),
+        body: JSON.stringify({
+          ...newUser,
+          hashed_password: "temp_default_password" 
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to create user");
       
-      const createdUser = await res.json(); // Expecting backend to return the full new user object
+      const createdUser = await res.json(); 
       
       // Update UI: Add new user to the list immediately
       setUsers(prev => [...prev, createdUser]);
