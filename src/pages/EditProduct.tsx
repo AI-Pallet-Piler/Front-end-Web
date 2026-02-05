@@ -1,13 +1,17 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { ArrowLeft, Save } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import type { Product } from "./ViewProduct";
 
 /**
+ *
+ * No backend yet:
+ * - We receive a product through router state from ViewProduct
+ *
  * TODO (Backend):
- * - Replace console.log with POST /products (python api)
+ * - Fetch product by id: GET /products/:id
+ * - Save changes: PUT/PATCH /products/:id
  * - Validate SKU uniqueness server-side
- * - Convert category/manufacturer/supplier to real DB fields (if you keep them)
- * - If you still need pallet fields, put them in a separate step/page later
  */
 
 type ProductForm = {
@@ -16,7 +20,6 @@ type ProductForm = {
   category: string;
   description: string;
 
-  // keep these as strings for easy typing (convert to numbers on submit)
   length_cm: string;
   width_cm: string;
   height_cm: string;
@@ -26,38 +29,74 @@ type ProductForm = {
   supplier: string;
 
   is_fragile: boolean;
-  is_liquid: boolean; // you can label as hazardous if needed later
+  is_liquid: boolean;
   requires_upright: boolean;
 };
 
-const CATEGORY_OPTIONS = [
-  "Electronics",
-  "Industrial",
-  "Furniture",
-  "Chemicals",
-  "Packaging",
-];
+const CATEGORY_OPTIONS = ["Electronics", "Industrial", "Furniture", "Chemicals", "Packaging"];
 
-export default function AddProduct() {
+function normalizeNumberInput(v: string) {
+  if (v.trim() === "") return "";
+  const normalized = v.replace(",", ".");
+  const num = Number(normalized);
+  if (Number.isNaN(num)) return v;
+  return String(Math.max(0, num));
+}
+
+export default function EditProduct() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = useParams();
+
+  // We pass product via router state from ViewProduct
+  const productFromState = (location.state as { product?: Product } | null)?.product;
+
+  // If user refreshes / opens directly, we don't have state
+  // TODO (Backend): fetch by id instead of showing fallback message
+  const productId = params.productId;
+
+  if (!productFromState) {
+    return (
+      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+        <h1 className="text-2xl font-semibold text-slate-900">Edit Product</h1>
+        <p className="mt-2 text-slate-500">
+          No product data available for editing.
+        </p>
+        <p className="mt-2 text-sm text-slate-400">
+          Product ID: <span className="font-mono">{productId}</span>
+        </p>
+
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={() => navigate("/products")}
+            className="rounded-xl px-5 py-3 border border-slate-200 text-slate-700 hover:bg-slate-50"
+          >
+            Back to Products
+          </button>
+
+          {/* TODO (Backend): fetch product by id here */}
+        </div>
+      </div>
+    );
+  }
 
   const [form, setForm] = useState<ProductForm>({
-    name: "",
-    sku: "",
-    category: "Electronics",
-    description: "",
+    name: productFromState.name ?? "",
+    sku: productFromState.sku ?? "",
+    category: "Electronics", // TODO (Backend): map real category field
+    description: productFromState.description ?? "",
 
-    length_cm: "",
-    width_cm: "",
-    height_cm: "",
-    weight_kg: "",
+    length_cm: String(productFromState.length_cm ?? ""),
+    width_cm: String(productFromState.width_cm ?? ""),
+    height_cm: String(productFromState.height_cm ?? ""),
+    weight_kg: String(productFromState.weight_kg ?? ""),
 
-    manufacturer: "",
-    supplier: "",
+    manufacturer: "", // TODO (Backend): map field 
+    supplier: "",     // TODO (Backend): map field 
 
-    is_fragile: false,
-    is_liquid: false,
-    requires_upright: false,
+    is_fragile: !!productFromState.is_fragile,
+    is_liquid: !!productFromState.is_liquid,
+    requires_upright: !!productFromState.requires_upright,
   });
 
   const dimensionsPreview = useMemo(() => {
@@ -71,25 +110,10 @@ export default function AddProduct() {
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) {
     const { name, value, type } = e.target;
-
     setForm((prev) => ({
       ...prev,
-      [name]:
-        type === "checkbox"
-          ? (e.target as HTMLInputElement).checked
-          : value,
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
-  }
-
-  function normalizeNumberInput(v: string) {
-    // allow empty while typing
-    if (v.trim() === "") return "";
-    // replace comma with dot for EU decimals
-    const normalized = v.replace(",", ".");
-    // prevent negatives
-    const num = Number(normalized);
-    if (Number.isNaN(num)) return v; // keep raw if user mid-typing
-    return String(Math.max(0, num));
   }
 
   function handleNumberChange(e: ChangeEvent<HTMLInputElement>) {
@@ -97,11 +121,11 @@ export default function AddProduct() {
     setForm((prev) => ({ ...prev, [name]: normalizeNumberInput(value) }));
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // TODO (Backend): send to API instead of logging
     const payload = {
+      product_id: productFromState.product_id,
       name: form.name.trim(),
       sku: form.sku.trim(),
       category: form.category,
@@ -120,11 +144,22 @@ export default function AddProduct() {
       requires_upright: form.requires_upright,
     };
 
-    console.log("CREATE PRODUCT payload:", payload);
-    alert("Product logged to console (F12). Backend hook is TODO.");
+    try {
+      // TODO (Backend): PUT/PATCH to python backend
+      // await fetch(`http://localhost:8000/products/${productFromState.product_id}`, {
+      //   method: "PUT",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(payload),
+      // });
 
-    // go back to products list
-    navigate("/products");
+      console.log("EDIT PRODUCT payload:", payload);
+      alert("Saved (logged to console). Backend hook is TODO.");
+
+      navigate("/products");
+    } catch (err) {
+      console.error(err);
+      alert("Save failed");
+    }
   };
 
   return (
@@ -140,8 +175,8 @@ export default function AddProduct() {
         </Link>
 
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Create New Product</h1>
-          <p className="mt-1 text-slate-500">Add a new product to the warehouse</p>
+          <h1 className="text-3xl font-bold text-slate-900">Edit Product</h1>
+          <p className="mt-1 text-slate-500">Update product details</p>
         </div>
       </div>
 
@@ -273,7 +308,7 @@ export default function AddProduct() {
               />
             </div>
 
-            {/* Manufacturer + Supplier */}
+            {/* Manufacturer + Supplier (optional UI fields) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-sm font-medium text-slate-700">Manufacturer</label>
@@ -372,7 +407,7 @@ export default function AddProduct() {
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-white font-medium hover:bg-blue-700 transition"
             >
               <Save className="h-5 w-5" />
-              Create Product
+              Save Changes
             </button>
           </div>
         </div>
