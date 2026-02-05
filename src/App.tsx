@@ -7,6 +7,7 @@ import ManageUsers from "./pages/ManageUsers";
 import ViewProduct from "./pages/ViewProduct";
 import AddProduct from "./pages/AddProduct";
 import EditProduct from "./pages/EditProduct";
+import ViewInventory from "./pages/ViewInventory";
 
 
 
@@ -22,6 +23,8 @@ function App() {
           <Route path="/products" element={<ViewProduct />} />
           <Route path="/products/add" element={<AddProduct />} />
           <Route path="/products/:productId/edit" element={<EditProduct />} />
+            {/* INVENTORY */}
+          <Route path="/inventory" element={<ViewInventory />} />
 
 
           {/* Admin-only routes */}
