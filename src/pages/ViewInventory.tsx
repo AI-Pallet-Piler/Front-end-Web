@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Eye, MapPin, Search } from "lucide-react";
+import { AlertTriangle, Eye, MapPin, Pencil, Search } from "lucide-react";
+import { Link } from "react-router-dom";
 import ViewInventoryModal from "../components/ViewInventoryModal";
 
 /**
@@ -13,20 +14,6 @@ import ViewInventoryModal from "../components/ViewInventoryModal";
  *    can quickly show all info without extra requests:
  *    inventory_id, product_id, location_id, quantity,
  *    sku, product_name, product_description, location_code
- *
- *    Recommended response:
- *    [
- *      {
- *        inventory_id: 1,
- *        product_id: 10,
- *        location_id: 5,
- *        quantity: 45,
- *        sku: "PRD-001",
- *        product_name: "Industrial Laptop",
- *        product_description: "Rugged device for warehouse operations",
- *        location_code: "A-12-03"
- *      }
- *    ]
  *
  * 3) later: server-side search:
  *    - GET /api/inventory?q=helmet
@@ -117,16 +104,14 @@ function StatusBadge({ qty }: { qty: number }) {
     : "bg-green-100 text-green-700 border-green-200";
 
   return (
-    <span
-      className={`px-2.5 py-1 rounded-full text-xs font-medium border ${styles}`}
-    >
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${styles}`}>
       {isLow ? "Low Stock" : "In Stock"}
     </span>
   );
 }
 
 export default function ViewInventory() {
-  const [inventory, setInventory] = useState<InventoryRow[]>(mockInventory);
+  const [inventory] = useState<InventoryRow[]>(mockInventory);
   const [search, setSearch] = useState("");
 
   // View modal
@@ -148,38 +133,15 @@ export default function ViewInventory() {
     return inventory.filter((r) => r.quantity <= LOW_STOCK_THRESHOLD).length;
   }, [inventory]);
 
-  /**
-   * =========================================================
-   * TODO (Backend) - Replace mock with API call
-   * =========================================================
-   * Example:
-   *
-   * useEffect(() => {
-   *   (async () => {
-   *     const res = await fetch("/api/inventory");
-   *     const data = await res.json();
-   *     setInventory(data);
-   *   })();
-   * }, []);
-   *
-   * If you support server-side search later:
-   * - fetch(`/api/inventory?q=${encodeURIComponent(search)}`)
-   * =========================================================
-   */
-
   return (
     <div className="space-y-6">
       {/* PAGE HEADER */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900">
-            Inventory Management
-          </h1>
-          <p className="mt-2 text-slate-500">
-            Monitor and manage warehouse stock levels
-          </p>
+          <h1 className="text-4xl font-bold text-slate-900">Inventory Management</h1>
+          <p className="mt-2 text-slate-500">Monitor and manage warehouse stock levels</p>
         </div>
-        {/* create action buttons */}
+        {/* keep header clean (create later in another branch) */}
       </div>
 
       {/* LOW STOCK BANNER */}
@@ -188,9 +150,7 @@ export default function ViewInventory() {
           <AlertTriangle className="h-5 w-5 mt-0.5" />
           <div className="text-sm">
             <span className="font-semibold">Low Stock Alert:</span>{" "}
-            {lowStockCount} item{lowStockCount === 1 ? "" : "s"} are running low
-            on stock and require restocking.
-            {/* TODO (Backend later): threshold configurable per warehouse */}
+            {lowStockCount} item{lowStockCount === 1 ? "" : "s"} are running low on stock and require restocking.
           </div>
         </div>
       )}
@@ -208,13 +168,6 @@ export default function ViewInventory() {
               className="w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
-          {/**
-           * TODO (Backend optional):
-           * If you add server-side search:
-           * - debounce search input
-           * - call GET /api/inventory?q=...
-           */}
         </div>
 
         {/* TABLE */}
@@ -227,23 +180,17 @@ export default function ViewInventory() {
                 <th className="px-6 py-4 font-semibold w-28">Quantity</th>
                 <th className="px-6 py-4 font-semibold w-40">Location</th>
                 <th className="px-6 py-4 font-semibold w-32">Status</th>
-                <th className="px-6 py-4 font-semibold text-right w-28">
-                  Actions
-                </th>
+                <th className="px-6 py-4 font-semibold text-right w-28">Actions</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100">
               {filtered.map((r) => (
                 <tr key={r.inventory_id} className="hover:bg-slate-50">
-                  <td className="px-6 py-5 font-mono text-slate-700 whitespace-nowrap">
-                    {r.sku}
-                  </td>
+                  <td className="px-6 py-5 font-mono text-slate-700 whitespace-nowrap">{r.sku}</td>
 
                   <td className="px-6 py-5">
-                    <div className="font-semibold text-slate-900 leading-tight">
-                      {r.product_name}
-                    </div>
+                    <div className="font-semibold text-slate-900 leading-tight">{r.product_name}</div>
                     <div className="mt-1 text-sm text-slate-400 line-clamp-2">
                       {r.product_description || "—"}
                     </div>
@@ -251,14 +198,9 @@ export default function ViewInventory() {
 
                   <td className="px-6 py-5 text-slate-700 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-900">
-                        {r.quantity}
-                      </span>
-
+                      <span className="font-medium text-slate-900">{r.quantity}</span>
                       {r.quantity <= LOW_STOCK_THRESHOLD && (
-                        <span className="text-orange-600 text-xs font-semibold">
-                          ↓
-                        </span>
+                        <span className="text-orange-600 text-xs font-semibold">↓</span>
                       )}
                     </div>
                   </td>
@@ -276,7 +218,7 @@ export default function ViewInventory() {
 
                   <td className="px-6 py-5">
                     <div className="flex items-center justify-end gap-2">
-                      {/* VIEW INVENTORY DETAILS (MODAL) */}
+                      {/* VIEW (MODAL) */}
                       <button
                         type="button"
                         onClick={() => setSelectedRow(r)}
@@ -286,11 +228,15 @@ export default function ViewInventory() {
                         <Eye className="h-5 w-5" />
                       </button>
 
-                      {/**
-                       * TODO:
-                       * - Add "Edit" action
-                       * - Add "Delete row" action + confirm modal
-                       */}
+                      {/* EDIT (ROUTE) */}
+                      <Link
+                        to={`/inventory/${r.inventory_id}/edit`}
+                        state={{ row: r }}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer hover:text-green-600"
+                        title="Edit inventory"
+                      >
+                        <Pencil className="h-5 w-5" />
+                      </Link>
                     </div>
                   </td>
                 </tr>
@@ -298,10 +244,7 @@ export default function ViewInventory() {
 
               {filtered.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-16 text-center text-slate-400"
-                  >
+                  <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
                     No inventory rows match “{search}”.
                   </td>
                 </tr>
@@ -313,24 +256,14 @@ export default function ViewInventory() {
         {/* FOOTER */}
         <div className="px-6 py-4 border-t border-slate-100 text-sm text-slate-500 flex items-center justify-between">
           <span>
-            Showing <span className="font-medium">{filtered.length}</span> result
-            {filtered.length === 1 ? "" : "s"}
+            Showing <span className="font-medium">{filtered.length}</span> result{filtered.length === 1 ? "" : "s"}
           </span>
-          <span className="hidden sm:block">
-            Low stock threshold: {LOW_STOCK_THRESHOLD}
-          </span>
+          <span className="hidden sm:block">Low stock threshold: {LOW_STOCK_THRESHOLD}</span>
         </div>
       </div>
 
       {/* VIEW MODAL */}
       <ViewInventoryModal row={selectedRow} onClose={() => setSelectedRow(null)} />
-
-      {/**
-       * TODO (Backend + UX later):
-       * - If inventory rows can have multiple locations per product, decide how to display:
-       *    A) one row per product per location (current approach)
-       *    B) group by product and show expandable locations list
-       */}
     </div>
   );
 }
