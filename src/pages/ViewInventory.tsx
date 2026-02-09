@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Eye, MapPin, Pencil, Search } from "lucide-react";
-import { Link } from "react-router-dom";
-import ViewInventoryModal from "../components/ViewInventoryModal";
+import { AlertTriangle, Eye, PackagePlus, Search } from "lucide-react";
+import EditInventoryModal from "../components/EditInventoryModal";
+import InventoryDetailsModal from "../components/InventoryDetailsModal";
 
 /**
  * =========================================================
@@ -10,23 +10,15 @@ import ViewInventoryModal from "../components/ViewInventoryModal";
  * 1) Replace mock data with API call:
  *    - GET /api/inventory
  *
- * 2) Response should include JOINED product + location fields so the modal
- *    can quickly show all info without extra requests:
- *    inventory_id, product_id, location_id, quantity,
- *    sku, product_name, product_description, location_code
- *
- * 3) later: server-side search:
- *    - GET /api/inventory?q=helmet
- *
- * 4) backend features:
- *    - Edit/Adjust stock:
- *        A) PUT /api/inventory/:id  { quantity: number, location_id?: number }
- *        B) POST /api/inventory/adjust { inventory_id, delta, reason }
- *    - Delete inventory row:
- *        DELETE /api/inventory/:id
- *    - Pagination + sorting server-side
+ * 2) Save edits:
+ *    - PUT/PATCH /api/inventory/:id  { locations: [{location_code, quantity}] }
  * =========================================================
  */
+
+export type InventoryLocation = {
+  location_code: string;
+  quantity: number;
+};
 
 export type InventoryRow = {
   inventory_id: number;
@@ -37,11 +29,40 @@ export type InventoryRow = {
   product_name: string;
   product_description?: string | null;
 
+  // old fields (still supported)
   quantity: number;
-  location_code: string; // e.g. "A-12-03"
+  location_code: string;
+
+  // ✅ new multi-location
+  locations?: InventoryLocation[];
 };
 
 const LOW_STOCK_THRESHOLD = 20;
+
+// --- Helpers to support BOTH old + new shapes ---
+function getLocations(r: InventoryRow): InventoryLocation[] {
+  if (r.locations?.length) return r.locations;
+  return r.location_code
+    ? [{ location_code: r.location_code, quantity: r.quantity ?? 0 }]
+    : [];
+}
+
+function getTotalQty(r: InventoryRow): number {
+  return getLocations(r).reduce((sum, l) => sum + (l.quantity ?? 0), 0);
+}
+
+function StatusBadge({ qty }: { qty: number }) {
+  const isLow = qty <= LOW_STOCK_THRESHOLD;
+  const styles = isLow
+    ? "bg-orange-100 text-orange-700 border-orange-200"
+    : "bg-green-100 text-green-700 border-green-200";
+
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${styles}`}>
+      {isLow ? "Low Stock" : "In Stock"}
+    </span>
+  );
+}
 
 const mockInventory: InventoryRow[] = [
   {
@@ -53,6 +74,11 @@ const mockInventory: InventoryRow[] = [
     product_description: "Rugged device for warehouse operations",
     quantity: 45,
     location_code: "A-12-03",
+    locations: [
+      { location_code: "A-12-03", quantity: 45 },
+      { location_code: "B-01-02", quantity: 10 },
+      { location_code: "C-02-01", quantity: 5 },
+    ],
   },
   {
     inventory_id: 2,
@@ -96,41 +122,32 @@ const mockInventory: InventoryRow[] = [
   },
 ];
 
-function StatusBadge({ qty }: { qty: number }) {
-  const isLow = qty <= LOW_STOCK_THRESHOLD;
-
-  const styles = isLow
-    ? "bg-orange-100 text-orange-700 border-orange-200"
-    : "bg-green-100 text-green-700 border-green-200";
-
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${styles}`}>
-      {isLow ? "Low Stock" : "In Stock"}
-    </span>
-  );
-}
-
 export default function ViewInventory() {
-  const [inventory] = useState<InventoryRow[]>(mockInventory);
+  const [inventory, setInventory] = useState<InventoryRow[]>(mockInventory);
   const [search, setSearch] = useState("");
 
-  // View modal
+  // Edit modal state
   const [selectedRow, setSelectedRow] = useState<InventoryRow | null>(null);
+
+  // Details modal state
+  const [detailsRow, setDetailsRow] = useState<InventoryRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return inventory;
 
-    return inventory.filter(
-      (r) =>
+    return inventory.filter((r) => {
+      const locs = getLocations(r);
+      return (
         r.product_name.toLowerCase().includes(q) ||
         r.sku.toLowerCase().includes(q) ||
-        r.location_code.toLowerCase().includes(q)
-    );
+        locs.some((l) => l.location_code.toLowerCase().includes(q))
+      );
+    });
   }, [inventory, search]);
 
   const lowStockCount = useMemo(() => {
-    return inventory.filter((r) => r.quantity <= LOW_STOCK_THRESHOLD).length;
+    return inventory.filter((r) => getTotalQty(r) <= LOW_STOCK_THRESHOLD).length;
   }, [inventory]);
 
   return (
@@ -141,7 +158,6 @@ export default function ViewInventory() {
           <h1 className="text-4xl font-bold text-slate-900">Inventory Management</h1>
           <p className="mt-2 text-slate-500">Monitor and manage warehouse stock levels</p>
         </div>
-        {/* keep header clean (create later in another branch) */}
       </div>
 
       {/* LOW STOCK BANNER */}
@@ -150,7 +166,8 @@ export default function ViewInventory() {
           <AlertTriangle className="h-5 w-5 mt-0.5" />
           <div className="text-sm">
             <span className="font-semibold">Low Stock Alert:</span>{" "}
-            {lowStockCount} item{lowStockCount === 1 ? "" : "s"} are running low on stock and require restocking.
+            {lowStockCount} item{lowStockCount === 1 ? "" : "s"} are running low on stock and
+            require restocking.
           </div>
         </div>
       )}
@@ -178,69 +195,86 @@ export default function ViewInventory() {
                 <th className="px-6 py-4 font-semibold w-36">SKU</th>
                 <th className="px-6 py-4 font-semibold">Product</th>
                 <th className="px-6 py-4 font-semibold w-28">Quantity</th>
-                <th className="px-6 py-4 font-semibold w-40">Location</th>
+
+                {/* now only shows count */}
+                <th className="px-6 py-4 font-semibold w-40">Locations</th>
+
                 <th className="px-6 py-4 font-semibold w-32">Status</th>
                 <th className="px-6 py-4 font-semibold text-right w-28">Actions</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((r) => (
-                <tr key={r.inventory_id} className="hover:bg-slate-50">
-                  <td className="px-6 py-5 font-mono text-slate-700 whitespace-nowrap">{r.sku}</td>
+              {filtered.map((r) => {
+                const totalQty = getTotalQty(r);
+                const locCount = getLocations(r).length;
 
-                  <td className="px-6 py-5">
-                    <div className="font-semibold text-slate-900 leading-tight">{r.product_name}</div>
-                    <div className="mt-1 text-sm text-slate-400 line-clamp-2">
-                      {r.product_description || "—"}
-                    </div>
-                  </td>
+                return (
+                  <tr key={r.inventory_id} className="hover:bg-slate-50">
+                    <td className="px-6 py-5 font-mono text-slate-700 whitespace-nowrap">{r.sku}</td>
 
-                  <td className="px-6 py-5 text-slate-700 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-900">{r.quantity}</span>
-                      {r.quantity <= LOW_STOCK_THRESHOLD && (
-                        <span className="text-orange-600 text-xs font-semibold">↓</span>
-                      )}
-                    </div>
-                  </td>
+                    <td className="px-6 py-5">
+                      <div className="font-semibold text-slate-900 leading-tight">{r.product_name}</div>
+                      <div className="mt-1 text-sm text-slate-400 line-clamp-2">
+                        {r.product_description || "—"}
+                      </div>
+                    </td>
 
-                  <td className="px-6 py-5 text-slate-700 whitespace-nowrap">
-                    <div className="inline-flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-slate-400" />
-                      <span>{r.location_code}</span>
-                    </div>
-                  </td>
+                    <td className="px-6 py-5 text-slate-700 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-900">{totalQty}</span>
+                        {totalQty <= LOW_STOCK_THRESHOLD && (
+                          <span className="text-orange-600 text-xs font-semibold">↓</span>
+                        )}
+                      </div>
+                    </td>
 
-                  <td className="px-6 py-5">
-                    <StatusBadge qty={r.quantity} />
-                  </td>
+                    {/* ✅ Just the count (no click) */}
+                    <td className="px-6 py-5 text-slate-700 whitespace-nowrap">
+                      <span className="font-medium">
+                        {locCount} location{locCount === 1 ? "" : "s"}
+                      </span>
+                    </td>
 
-                  <td className="px-6 py-5">
-                    <div className="flex items-center justify-end gap-2">
-                      {/* VIEW (MODAL) */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRow(r)}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 cursor-pointer hover:text-blue-600"
-                        title="View inventory details"
-                      >
-                        <Eye className="h-5 w-5" />
-                      </button>
+                    <td className="px-6 py-5">
+                      <StatusBadge qty={totalQty} />
+                    </td>
 
-                      {/* EDIT (ROUTE) */}
-                      <Link
-                        to={`/inventory/${r.inventory_id}/edit`}
-                        state={{ row: r }}
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer hover:text-green-600"
-                        title="Edit inventory"
-                      >
-                        <Pencil className="h-5 w-5" />
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    {/* ✅ Actions: Eye (view details) + PackagePlus (edit) */}
+                    <td className="px-6 py-5">
+                      <div className="flex items-center justify-end gap-2">
+                        {/* View details */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDetailsRow(r);
+                          }}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer hover:text-blue-600"
+                          title="View inventory details"
+                        >
+                          <Eye className="h-5 w-5" />
+                        </button>
+
+                        {/* Edit */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedRow(r);
+                          }}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 cursor-pointer hover:text-green-600"
+                          title="Edit inventory"
+                        >
+                          <PackagePlus className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
 
               {filtered.length === 0 && (
                 <tr>
@@ -256,14 +290,29 @@ export default function ViewInventory() {
         {/* FOOTER */}
         <div className="px-6 py-4 border-t border-slate-100 text-sm text-slate-500 flex items-center justify-between">
           <span>
-            Showing <span className="font-medium">{filtered.length}</span> result{filtered.length === 1 ? "" : "s"}
+            Showing <span className="font-medium">{filtered.length}</span> result
+            {filtered.length === 1 ? "" : "s"}
           </span>
           <span className="hidden sm:block">Low stock threshold: {LOW_STOCK_THRESHOLD}</span>
         </div>
       </div>
 
-      {/* VIEW MODAL */}
-      <ViewInventoryModal row={selectedRow} onClose={() => setSelectedRow(null)} />
+      {/* EDIT MODAL */}
+      <EditInventoryModal
+        row={selectedRow}
+        onClose={() => setSelectedRow(null)}
+        onSaved={(updated) => {
+          setInventory((prev) =>
+            prev.map((x) => (x.inventory_id === updated.inventory_id ? updated : x))
+          );
+
+          // keep details modal in sync if it is open for same row
+          setDetailsRow((prev) => (prev?.inventory_id === updated.inventory_id ? updated : prev));
+        }}
+      />
+
+      {/* DETAILS MODAL */}
+      <InventoryDetailsModal row={detailsRow} onClose={() => setDetailsRow(null)} />
     </div>
   );
 }
