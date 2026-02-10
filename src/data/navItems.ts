@@ -7,7 +7,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type UserRole = "admin" | "manager";
+export type UserRole = "admin" | "manager" | "picker";
 
 export type NavItem = {
   label: string;

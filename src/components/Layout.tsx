@@ -1,20 +1,19 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, Navigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { useAuth } from "../context/AuthContext";
 import TopBar from "./TopBar";
-import Footer from "./Footer";
 
 const year = new Date().getFullYear();
 const Layout = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
-  if (!user) return <div className="p-8">Not authenticated</div>;
+  if (!user) return <Navigate to="/login" replace />;
 
   return (
     <div className="min-h-screen flex bg-slate-950 font-sans">
       {/* LEFT SIDEBAR */}
       <aside className="shrink-0">
-        <Sidebar role={user.role} />
+        <Sidebar role={user.role} onLogout={logout} />
       </aside>
 
       {/* RIGHT SIDE */}
