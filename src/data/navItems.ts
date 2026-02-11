@@ -22,6 +22,6 @@ export const navItems: NavItem[] = [
   { label: "Products", to: "/products", icon: Package, roles: ["admin", "manager"] },
   { label: "Inventory", to: "/inventory", icon: Boxes, roles: ["admin", "manager"] },
 
-  { label: "Users", to: "/users", icon: Users, roles: ["admin"] },
+  { label: "Users", to: "/users", icon: Users, roles: ["admin", "manager"] },
   { label: "Settings", to: "/settings", icon: Settings, roles: ["admin", "manager"] },
 ];

@@ -9,23 +9,10 @@ interface LoginState {
   role: Role
   username: string
   password: string
-  pickerId: string
-}
-
-// Demo credentials for testing
-const DEMO_ACCOUNTS = {
-  manager: {
-    username: 'manager',
-    password: 'manager123'
-  },
-  picker: {
-    username: 'picker',
-    pickerId: '12345'
-  }
 }
 
 const Login: React.FC = () => {
-  const [state, setState] = useState<LoginState>({ role: 'manager', username: '', password: '', pickerId: '' })
+  const [state, setState] = useState<LoginState>({ role: 'manager', username: '', password: '' })
   const navigate = useNavigate()
   const { login } = useAuth()
 
@@ -38,25 +25,14 @@ const Login: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (state.role === 'manager') {
-      // Validate manager credentials
-      if (state.username === DEMO_ACCOUNTS.manager.username && 
-          state.password === DEMO_ACCOUNTS.manager.password) {
-        login(state.role, state.username)
-        navigate('/')
-      } else {
-        alert('Invalid credentials. Try:\nUsername: manager\nPassword: manager123')
-      }
+    // API gateway isn't ready yet — simulate a login attempt
+    console.log('Login attempt:', { role: state.role, username: state.username })
+    if (state.username && state.password) {
+      // demo login through context so the app updates immediately
+      login(state.role, state.username)
+      navigate('/')
     } else {
-      // Validate picker credentials
-      if (state.username === DEMO_ACCOUNTS.picker.username && 
-          state.pickerId === DEMO_ACCOUNTS.picker.pickerId) {
-        login(state.role, state.username)
-        navigate('/')
-      } else {
-        alert('Invalid credentials. Try:\nUsername: picker\nPicker ID: 12345')
-      }
+      alert('Enter username and password (demo).')
     }
   }
 
@@ -114,16 +90,7 @@ const Login: React.FC = () => {
             </li>
           </ul>
 
-          {/* Demo credentials hint */}
-          <div className="mt-12 p-4 bg-white/10 rounded-lg">
-            <div className="text-xs font-semibold mb-2">Demo Credentials</div>
-            <div className="text-xs space-y-1 opacity-90">
-              <div><strong>Manager:</strong> manager / manager123</div>
-              <div><strong>Picker:</strong> picker / 12345</div>
-            </div>
-          </div>
-
-          <div className="text-xs opacity-80 mt-4">© 2024 WarehousePro. All rights reserved.</div>
+          <div className="text-xs opacity-80 mt-12">© 2024 WarehousePro. All rights reserved.</div>
         </div>
       </div>
 
@@ -168,35 +135,18 @@ const Login: React.FC = () => {
               />
             </div>
 
-            {state.role === 'manager' ? (
-              <div>
-                <label className="text-xs block mb-1 text-slate-600">Password</label>
-                <input
-                  name="password"
-                  type="password"
-                  value={state.password}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-slate-200 rounded-md text-sm"
-                  placeholder="Enter your password"
-                  required
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="text-xs block mb-1 text-slate-600">Picker ID</label>
-                <input
-                  name="pickerId"
-                  type="text"
-                  value={state.pickerId}
-                  onChange={handleChange}
-                  className="w-full p-2 border border-slate-200 rounded-md text-sm"
-                  placeholder="Enter your 5-digit Picker ID"
-                  maxLength={5}
-                  pattern="\d{5}"
-                  required
-                />
-              </div>
-            )}
+            <div>
+              <label className="text-xs block mb-1 text-slate-600">Password</label>
+              <input
+                name="password"
+                type="password"
+                value={state.password}
+                onChange={handleChange}
+                className="w-full p-2 border border-slate-200 rounded-md text-sm"
+                placeholder="Enter your password"
+                required
+              />
+            </div>
 
             <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-md mt-2">
               Sign In to Portal

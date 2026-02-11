@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import type { UserRole } from "../data/navItems";
 
 type User = {
@@ -9,33 +9,62 @@ type User = {
 
 type AuthContextType = {
   user: User | null;
-  loginAsAdmin: () => void;
-  loginAsManager: () => void;
+  login: (role: UserRole, username?: string) => void;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // fake login state (replace with backend later)
-  const [user, setUser] = useState<User | null>({
-    id: 1,
-    name: "Amina",
-    role: "admin",
+  // Initialize from localStorage (demo token) so login persists across refresh
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const token = localStorage.getItem("demo_token");
+      const role = (localStorage.getItem("demo_role") || "manager") as UserRole;
+      const name = localStorage.getItem("demo_name") || "Demo User";
+      if (token) {
+        return { id: 1, name, role };
+      }
+    } catch (e) {
+      throw new Error("Failed to access localStorage for auth initialization: " + (e as Error).message);
+    }
+    return null;
   });
 
-  const loginAsAdmin = () =>
-    setUser({ id: 1, name: "Admin User", role: "admin" });
+  useEffect(() => {
+    // Keep localStorage in sync if user state changes externally
+    if (!user) {
+      localStorage.removeItem("demo_token");
+      localStorage.removeItem("demo_role");
+      localStorage.removeItem("demo_name");
+    }
+  }, [user]);
 
-  const loginAsManager = () =>
-    setUser({ id: 2, name: "Manager User", role: "manager" });
+  const login = (role: UserRole, username?: string) => {
+    const name = username || (role === "admin" ? "Admin User" : "Manager User");
+    try {
+      localStorage.setItem("demo_token", "demo-token");
+      localStorage.setItem("demo_role", role);
+      localStorage.setItem("demo_name", name);
+    } catch (e) {
+      throw new Error("Failed to set localStorage for auth login: " + (e as Error).message);
+    }
+    setUser({ id: 1, name, role });
+  };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    try {
+      localStorage.removeItem("demo_token");
+      localStorage.removeItem("demo_role");
+      localStorage.removeItem("demo_name");
+    } catch (e) {
+      throw new Error((e as Error).message);  
+    }
+    setUser(null);
+  };
 
   return (
-    <AuthContext.Provider
-      value={{ user, loginAsAdmin, loginAsManager, logout }}
-    >
+    <AuthContext.Provider value={{ user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
