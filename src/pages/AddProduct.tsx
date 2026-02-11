@@ -2,13 +2,8 @@ import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { ArrowLeft, Save } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 
-/**
- * TODO (Backend):
- * - Replace console.log with POST /products (python api)
- * - Validate SKU uniqueness server-side
- * - Convert category/manufacturer/supplier to real DB fields (if you keep them)
- * - If you still need pallet fields, put them in a separate step/page later
- */
+// API Configuration
+const API_BASE_URL = "http://localhost:8080/api";
 
 type ProductForm = {
   name: string;
@@ -40,6 +35,7 @@ const CATEGORY_OPTIONS = [
 
 export default function AddProduct() {
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const [form, setForm] = useState<ProductForm>({
     name: "",
@@ -97,34 +93,47 @@ export default function AddProduct() {
     setForm((prev) => ({ ...prev, [name]: normalizeNumberInput(value) }));
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // TODO (Backend): send to API instead of logging
-    const payload = {
-      name: form.name.trim(),
-      sku: form.sku.trim(),
-      category: form.category,
-      description: form.description.trim() || null,
+    setIsSubmitting(true);
 
-      length_cm: Number(form.length_cm || 0),
-      width_cm: Number(form.width_cm || 0),
-      height_cm: Number(form.height_cm || 0),
-      weight_kg: Number(form.weight_kg || 0),
+    try {
+      const payload = {
+        name: form.name.trim(),
+        sku: form.sku.trim(),
+        description: form.description.trim() || null,
 
-      manufacturer: form.manufacturer.trim() || null,
-      supplier: form.supplier.trim() || null,
+        length_cm: Number(form.length_cm || 0),
+        width_cm: Number(form.width_cm || 0),
+        height_cm: Number(form.height_cm || 0),
+        weight_kg: Number(form.weight_kg || 0),
 
-      is_fragile: form.is_fragile,
-      is_liquid: form.is_liquid,
-      requires_upright: form.requires_upright,
-    };
+        is_fragile: form.is_fragile,
+        is_liquid: form.is_liquid,
+        requires_upright: form.requires_upright,
+        
+        max_stack_layers: 10,
+        pick_frequency: 0,
+        popularity_score: 0,
+      };
 
-    console.log("CREATE PRODUCT payload:", payload);
-    alert("Product logged to console (F12). Backend hook is TODO.");
+      const res = await fetch(`${API_BASE_URL}/v1/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    // go back to products list
-    navigate("/products");
+      if (!res.ok) throw new Error("Failed to create product");
+
+      alert("Product created successfully!");
+      navigate("/products");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to create product");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -363,16 +372,18 @@ export default function AddProduct() {
               type="button"
               onClick={() => navigate("/products")}
               className="rounded-xl px-5 py-3 border border-slate-200 text-slate-700 hover:bg-slate-50"
+              disabled={isSubmitting}
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-white font-medium hover:bg-blue-700 transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-white font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
             >
               <Save className="h-5 w-5" />
-              Create Product
+              {isSubmitting ? "Creating..." : "Create Product"}
             </button>
           </div>
         </div>

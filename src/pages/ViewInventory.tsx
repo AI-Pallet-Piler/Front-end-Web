@@ -1,19 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Eye, PackagePlus, Search } from "lucide-react";
 import EditInventoryModal from "../components/EditInventoryModal";
 import InventoryDetailsModal from "../components/InventoryDetailsModal";
 
-/**
- * =========================================================
- * TODO (Backend) - View Inventory Page
- * =========================================================
- * 1) Replace mock data with API call:
- *    - GET /api/inventory
- *
- * 2) Save edits:
- *    - PUT/PATCH /api/inventory/:id  { locations: [{location_code, quantity}] }
- * =========================================================
- */
+// API Configuration
+const API_BASE_URL = "http://localhost:8080/api";
 
 export type InventoryLocation = {
   location_code: string;
@@ -29,17 +20,17 @@ export type InventoryRow = {
   product_name: string;
   product_description?: string | null;
 
-  // old fields (still supported)
+  // Single location fields (legacy/fallback)
   quantity: number;
   location_code: string;
 
-  // ✅ new multi-location
+  // Multi-location support
   locations?: InventoryLocation[];
 };
 
 const LOW_STOCK_THRESHOLD = 20;
 
-// --- Helpers to support BOTH old + new shapes ---
+// Helpers to support both single and multi-location inventory
 function getLocations(r: InventoryRow): InventoryLocation[] {
   if (r.locations?.length) return r.locations;
   return r.location_code
@@ -64,73 +55,36 @@ function StatusBadge({ qty }: { qty: number }) {
   );
 }
 
-const mockInventory: InventoryRow[] = [
-  {
-    inventory_id: 1,
-    product_id: 1,
-    location_id: 101,
-    sku: "PRD-001",
-    product_name: "Industrial Laptop",
-    product_description: "Rugged device for warehouse operations",
-    quantity: 45,
-    location_code: "A-12-03",
-    locations: [
-      { location_code: "A-12-03", quantity: 45 },
-      { location_code: "B-01-02", quantity: 10 },
-      { location_code: "C-02-01", quantity: 5 },
-    ],
-  },
-  {
-    inventory_id: 2,
-    product_id: 2,
-    location_id: 102,
-    sku: "PRD-002",
-    product_name: "Safety Helmets",
-    product_description: "PPE",
-    quantity: 15,
-    location_code: "B-05-02",
-  },
-  {
-    inventory_id: 3,
-    product_id: 3,
-    location_id: 103,
-    sku: "PRD-003",
-    product_name: "Chemical Cleaner",
-    product_description: "Industrial cleaning chemical",
-    quantity: 8,
-    location_code: "C-01-01",
-  },
-  {
-    inventory_id: 4,
-    product_id: 4,
-    location_id: 104,
-    sku: "PRD-004",
-    product_name: "Office Desk",
-    product_description: null,
-    quantity: 120,
-    location_code: "D-10-05",
-  },
-  {
-    inventory_id: 5,
-    product_id: 5,
-    location_id: 105,
-    sku: "PRD-005",
-    product_name: "LED Monitor",
-    product_description: null,
-    quantity: 65,
-    location_code: "A-15-08",
-  },
-];
-
 export default function ViewInventory() {
-  const [inventory, setInventory] = useState<InventoryRow[]>(mockInventory);
+  const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Edit modal state
   const [selectedRow, setSelectedRow] = useState<InventoryRow | null>(null);
 
   // Details modal state
   const [detailsRow, setDetailsRow] = useState<InventoryRow | null>(null);
+
+  // Fetch inventory on component mount
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/v1/inventory`);
+        if (!res.ok) throw new Error("Failed to fetch inventory");
+        const data = await res.json();
+        setInventory(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error fetching inventory:", error);
+        alert("Failed to load inventory data");
+        setInventory([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInventory();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -189,6 +143,19 @@ export default function ViewInventory() {
 
         {/* TABLE */}
         <div className="overflow-x-auto">
+          {isLoading ? (
+            <div className="p-12 text-center text-slate-500">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+              <p className="mt-4">Loading inventory...</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-12 text-center text-slate-500">
+              <p className="text-lg font-medium">No inventory found</p>
+              <p className="mt-1 text-sm">
+                {search ? "Try adjusting your search" : "No inventory items available"}
+              </p>
+            </div>
+          ) : (
           <table className="w-full min-w-[980px] table-fixed">
             <thead>
               <tr className="text-left text-slate-500 text-sm border-b border-slate-100">
@@ -275,16 +242,9 @@ export default function ViewInventory() {
                   </tr>
                 );
               })}
-
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
-                    No inventory rows match “{search}”.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
+          )}
         </div>
 
         {/* FOOTER */}
