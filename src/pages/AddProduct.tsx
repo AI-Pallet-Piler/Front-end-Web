@@ -23,6 +23,10 @@ type ProductForm = {
   is_fragile: boolean;
   is_liquid: boolean; // you can label as hazardous if needed later
   requires_upright: boolean;
+  
+  // Inventory fields
+  initial_quantity: string;
+  location_code: string;
 };
 
 const CATEGORY_OPTIONS = [
@@ -54,6 +58,9 @@ export default function AddProduct() {
     is_fragile: false,
     is_liquid: false,
     requires_upright: false,
+    
+    initial_quantity: "0",
+    location_code: "",
   });
 
   const dimensionsPreview = useMemo(() => {
@@ -116,6 +123,9 @@ export default function AddProduct() {
         max_stack_layers: 10,
         pick_frequency: 0,
         popularity_score: 0,
+        
+        initial_quantity: Number(form.initial_quantity || 0),
+        location_code: form.location_code.trim() || null,
       };
 
       const res = await fetch(`${API_BASE_URL}/v1/products`, {
@@ -362,6 +372,46 @@ export default function AddProduct() {
                     </div>
                   </div>
                 </label>
+              </div>
+            </div>
+
+            {/* Initial Inventory Section */}
+            <div className="border-t border-slate-100 pt-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Initial Inventory</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Starting Quantity
+                  </label>
+                  <input
+                    type="number"
+                    name="initial_quantity"
+                    value={form.initial_quantity}
+                    onChange={handleNumberChange}
+                    min="0"
+                    step="1"
+                    className="block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                    placeholder="0"
+                  />
+                  <p className="mt-1 text-sm text-slate-500">Number of units to add to inventory</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Location Code <span className="text-slate-400">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="location_code"
+                    value={form.location_code}
+                    onChange={handleChange}
+                    className="block w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
+                    placeholder="e.g., A-01-01"
+                  />
+                  <p className="mt-1 text-sm text-slate-500">
+                    {form.location_code ? "Custom location" : "Will use DEFAULT-01 if empty"}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
