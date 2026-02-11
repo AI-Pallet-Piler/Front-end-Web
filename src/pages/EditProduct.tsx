@@ -1,18 +1,28 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { ArrowLeft, Save } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import type { Product } from "./ViewProduct";
 
-/**
- *
- * No backend yet:
- * - We receive a product through router state from ViewProduct
- *
- * TODO (Backend):
- * - Fetch product by id: GET /products/:id
- * - Save changes: PUT/PATCH /products/:id
- * - Validate SKU uniqueness server-side
- */
+// API Configuration
+const API_BASE_URL = "http://localhost:8080/api";
+
+export type Product = {
+  product_id: number;
+  sku: string;
+  name: string;
+  description?: string | null;
+  length_cm: number;
+  width_cm: number;
+  height_cm: number;
+  weight_kg: number;
+  is_fragile: boolean;
+  is_liquid: boolean;
+  requires_upright: boolean;
+  max_stack_layers?: number | null;
+  pick_frequency?: number | null;
+  popularity_score?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
 
 type ProductForm = {
   name: string;
@@ -48,56 +58,83 @@ export default function EditProduct() {
   const location = useLocation();
   const params = useParams();
 
-  // We pass product via router state from ViewProduct
-  const productFromState = (location.state as { product?: Product } | null)?.product;
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // If user refreshes / opens directly, we don't have state
-  // TODO (Backend): fetch by id instead of showing fallback message
+  // Try to get product from router state first
+  const productFromState = (location.state as { product?: Product } | null)?.product;
   const productId = params.productId;
 
-  if (!productFromState) {
-    return (
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
-        <h1 className="text-2xl font-semibold text-slate-900">Edit Product</h1>
-        <p className="mt-2 text-slate-500">
-          No product data available for editing.
-        </p>
-        <p className="mt-2 text-sm text-slate-400">
-          Product ID: <span className="font-mono">{productId}</span>
-        </p>
+  // Fetch product on component mount
+  useEffect(() => {
+    const fetchProduct = async () => {
+      // If we have product from router state, use it
+      if (productFromState) {
+        setProduct(productFromState);
+        setIsLoading(false);
+        return;
+      }
 
-        <div className="mt-6 flex gap-3">
-          <button
-            onClick={() => navigate("/products")}
-            className="rounded-xl px-5 py-3 border border-slate-200 text-slate-700 hover:bg-slate-50"
-          >
-            Back to Products
-          </button>
+      // Otherwise fetch from API
+      if (!productId) {
+        setIsLoading(false);
+        return;
+      }
 
-          {/* TODO (Backend): fetch product by id here */}
-        </div>
-      </div>
-    );
-  }
+      try {
+        const res = await fetch(`${API_BASE_URL}/v1/products/${productId}`);
+        if (!res.ok) throw new Error("Failed to fetch product");
+        
+        const data = await res.json();
+        setProduct(data);
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        setProduct(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [productId, productFromState]);
 
   const [form, setForm] = useState<ProductForm>({
-    name: productFromState.name ?? "",
-    sku: productFromState.sku ?? "",
-    category: "Electronics", // TODO (Backend): map real category field
-    description: productFromState.description ?? "",
-
-    length_cm: String(productFromState.length_cm ?? ""),
-    width_cm: String(productFromState.width_cm ?? ""),
-    height_cm: String(productFromState.height_cm ?? ""),
-    weight_kg: String(productFromState.weight_kg ?? ""),
-
-    manufacturer: "", // TODO (Backend): map field 
-    supplier: "",     // TODO (Backend): map field 
-
-    is_fragile: !!productFromState.is_fragile,
-    is_liquid: !!productFromState.is_liquid,
-    requires_upright: !!productFromState.requires_upright,
+    name: "",
+    sku: "",
+    category: "Electronics",
+    description: "",
+    length_cm: "",
+    width_cm: "",
+    height_cm: "",
+    weight_kg: "",
+    manufacturer: "",
+    supplier: "",
+    is_fragile: false,
+    is_liquid: false,
+    requires_upright: false,
   });
+
+  // Update form when product loads
+  useEffect(() => {
+    if (!product) return;
+
+    setForm({
+      name: product.name ?? "",
+      sku: product.sku ?? "",
+      category: "Electronics",
+      description: product.description ?? "",
+      length_cm: String(product.length_cm ?? ""),
+      width_cm: String(product.width_cm ?? ""),
+      height_cm: String(product.height_cm ?? ""),
+      weight_kg: String(product.weight_kg ?? ""),
+      manufacturer: "",
+      supplier: "",
+      is_fragile: !!product.is_fragile,
+      is_liquid: !!product.is_liquid,
+      requires_upright: !!product.requires_upright,
+    });
+  }, [product]);
 
   const dimensionsPreview = useMemo(() => {
     const l = form.length_cm || "—";
@@ -124,43 +161,80 @@ export default function EditProduct() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const payload = {
-      product_id: productFromState.product_id,
-      name: form.name.trim(),
-      sku: form.sku.trim(),
-      category: form.category,
-      description: form.description.trim() || null,
+    if (!product) return;
 
-      length_cm: Number(form.length_cm || 0),
-      width_cm: Number(form.width_cm || 0),
-      height_cm: Number(form.height_cm || 0),
-      weight_kg: Number(form.weight_kg || 0),
-
-      manufacturer: form.manufacturer.trim() || null,
-      supplier: form.supplier.trim() || null,
-
-      is_fragile: form.is_fragile,
-      is_liquid: form.is_liquid,
-      requires_upright: form.requires_upright,
-    };
+    setIsSubmitting(true);
 
     try {
-      // TODO (Backend): PUT/PATCH to python backend
-      // await fetch(`http://localhost:8000/products/${productFromState.product_id}`, {
-      //   method: "PUT",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify(payload),
-      // });
+      const payload = {
+        name: form.name.trim(),
+        sku: form.sku.trim(),
+        description: form.description.trim() || null,
 
-      console.log("EDIT PRODUCT payload:", payload);
-      alert("Saved (logged to console). Backend hook is TODO.");
+        length_cm: Number(form.length_cm || 0),
+        width_cm: Number(form.width_cm || 0),
+        height_cm: Number(form.height_cm || 0),
+        weight_kg: Number(form.weight_kg || 0),
 
+        is_fragile: form.is_fragile,
+        is_liquid: form.is_liquid,
+        requires_upright: form.requires_upright,
+
+        max_stack_layers: product.max_stack_layers ?? 10,
+        pick_frequency: product.pick_frequency ?? 0,
+        popularity_score: product.popularity_score ?? 0,
+      };
+
+      const res = await fetch(`${API_BASE_URL}/v1/products/${product.product_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to update product");
+
+      alert("Product updated successfully!");
       navigate("/products");
-    } catch (err) {
-      console.error(err);
-      alert("Save failed");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to update product");
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-slate-900">Edit Product</h1>
+        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-12 text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="mt-4 text-slate-500">Loading product...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (!product) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-slate-900">Edit Product</h1>
+        <div className="rounded-2xl bg-red-50 border border-red-200 px-5 py-4">
+          <p className="font-semibold text-red-900">Product not found</p>
+          <div className="mt-3">
+            <button
+              onClick={() => navigate("/products")}
+              className="rounded-lg bg-slate-600 px-4 py-2 text-white text-sm hover:bg-slate-700"
+            >
+              Back to Products
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -398,16 +472,18 @@ export default function EditProduct() {
               type="button"
               onClick={() => navigate("/products")}
               className="rounded-xl px-5 py-3 border border-slate-200 text-slate-700 hover:bg-slate-50"
+              disabled={isSubmitting}
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-white font-medium hover:bg-blue-700 transition"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-white font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
             >
               <Save className="h-5 w-5" />
-              Save Changes
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </div>
