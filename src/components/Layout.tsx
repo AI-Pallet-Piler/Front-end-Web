@@ -2,6 +2,7 @@ import { Outlet, Navigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { useAuth } from "../context/AuthContext";
 import TopBar from "./TopBar";
+import Footer from "./Footer";
 
 const year = new Date().getFullYear();
 const Layout = () => {

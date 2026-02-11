@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 
 // API Configuration
-const API_BASE_URL = "http://localhost:8000/api"; 
-
+const API_BASE_URL = "http://localhost:8080/api"; 8
 // Interface to define the shape of user data
 interface UserData {
   user_id: number;
