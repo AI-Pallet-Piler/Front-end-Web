@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, UserPlus, Trash2, X, Pencil } from "lucide-react";
+import {Search, UserPlus, Trash2, X, Pencil, CheckCircle2, AlertTriangle,} from "lucide-react";
 
 // API Configuration
 const API_BASE_URL = "http://localhost:8080/api";
@@ -32,6 +32,7 @@ const ViewUsers = () => {
 
   // Edit State
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Create User State
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
@@ -43,21 +44,34 @@ const ViewUsers = () => {
     role: "picker",
   });
 
+  // Delete confirmation modal state
+  const [deleteTarget, setDeleteTarget] = useState<UserData | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Toast / banner state
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const showToast = (t: { type: "success" | "error"; message: string }) => {
+    setToast(t);
+    window.setTimeout(() => setToast(null), 2500);
+  };
+
   // Fetch users on component mount
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // API Call - Get all users
         const res = await fetch(`${API_BASE_URL}/v1/users`);
         if (!res.ok) throw new Error("Failed to fetch");
 
         const data = await res.json();
-
-        // Ensure data is an array before setting state
         setUsers(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching users:", error);
         setUsers([]);
+        showToast({ type: "error", message: "Failed to fetch users." });
       } finally {
         setIsLoading(false);
       }
@@ -68,93 +82,61 @@ const ViewUsers = () => {
 
   // --- CREATE USER HANDLERS ---
 
-  // 1. Handle Input Changes for New User
   const handleCreateChange = (field: keyof CreateUserForm, value: string) => {
-    setNewUser(prev => ({ ...prev, [field]: value }));
+    setNewUser((prev) => ({ ...prev, [field]: value }));
   };
 
-  // 2. Submit New User to API
   const handleCreateUser = async () => {
-    // Basic validation
     if (!newUser.name || !newUser.email) {
       setCreateError("Name and Email are required.");
       return;
     }
 
     try {
-      // API Call - Create User (POST)
-      // We manually add 'hashed_password' here to satisfy the backend requirement
       const res = await fetch(`${API_BASE_URL}/v1/users/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...newUser,
-          hashed_password: "temp_default_password" 
+          hashed_password: "temp_default_password",
         }),
       });
 
       if (!res.ok) throw new Error("Failed to create user");
 
       const createdUser = await res.json();
+      setUsers((prev) => [...prev, createdUser]);
 
-      // Update UI: Add new user to the list immediately
-      setUsers(prev => [...prev, createdUser]);
-
-      // Reset Form and Close Modal
       setNewUser({ name: "", email: "", badge_number: "", role: "picker" });
       setIsCreateOpen(false);
       setCreateError("");
-      alert("User created successfully!");
-
+      showToast({ type: "success", message: "User created successfully!" });
     } catch (error) {
       console.error(error);
       setCreateError("Failed to create user. Check backend logs.");
+      showToast({ type: "error", message: "Failed to create user." });
     }
   };
 
-  // --- EDIT & DELETE HANDLERS ---
+  // --- EDIT HANDLERS ---
 
-  // Delete User Handler
-  const handleDelete = async (user_id: number) => {
-    const confirmDelete = window.confirm("Are you sure you want to remove this user?");
-    if (!confirmDelete) return;
-
-    try {
-      // API Call - Delete User
-      const res = await fetch(`${API_BASE_URL}/v1/users/${user_id}`, { method: 'DELETE' });
-
-      if (!res.ok) throw new Error("Failed to delete");
-
-      // Update UI: Remove the user with this ID from the state
-      setUsers((prev) => prev.filter((user) => user.user_id !== user_id));
-      
-    } catch (error) {
-      console.error(error);
-      alert("Failed to delete user");
-    }
-  };
-
-  // 1. Open the edit modal with the user's data
   const handleEditClick = (user: UserData) => {
     setEditingUser({ ...user });
   };
 
-  // 2. Handle input changes inside the edit modal
   const handleEditChange = (field: keyof UserData, value: string) => {
-    if (editingUser) {
-      setEditingUser({ ...editingUser, [field]: value } as UserData);
-    }
+    if (!editingUser) return;
+    setEditingUser({ ...editingUser, [field]: value } as UserData);
   };
 
-  // 3. Save changes (PUT Request)
   const handleSaveUser = async () => {
     if (!editingUser) return;
 
+    setIsSaving(true);
     try {
-      // API Call - Update User
       const res = await fetch(`${API_BASE_URL}/v1/users/${editingUser.user_id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingUser),
       });
 
@@ -162,18 +144,48 @@ const ViewUsers = () => {
 
       const updatedUser = await res.json();
 
-      // Update local state: Find the user by ID and replace with new data
-      setUsers(prev => prev.map(u => (u.user_id === editingUser.user_id ? updatedUser : u)));
+      setUsers((prev) =>
+        prev.map((u) => (u.user_id === editingUser.user_id ? updatedUser : u))
+      );
 
-      setEditingUser(null); // Close modal
-      alert("User updated successfully!");
+      setEditingUser(null);
+      showToast({ type: "success", message: "User updated successfully!" });
     } catch (error) {
       console.error(error);
-      alert("Failed to update user");
+      showToast({ type: "error", message: "Failed to update user." });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Search filter logic, memo for smoother UI
+  // --- DELETE HANDLERS ---
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/v1/users/${deleteTarget.user_id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Failed to delete");
+
+      setUsers((prev) => prev.filter((u) => u.user_id !== deleteTarget.user_id));
+      showToast({
+        type: "success",
+        message: `User "${deleteTarget.name}" deleted.`,
+      });
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error(error);
+      showToast({ type: "error", message: "Failed to delete user." });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Search filter logic
   const filteredUsers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return users;
@@ -204,9 +216,34 @@ const ViewUsers = () => {
         </button>
       </div>
 
-      {/* TABLE CARD (match other pages) */}
+      {/* Toast / feedback banner */}
+      {toast && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm flex items-start gap-2 ${
+            toast.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 className="h-5 w-5 mt-0.5" />
+          ) : (
+            <AlertTriangle className="h-5 w-5 mt-0.5" />
+          )}
+          <div className="flex-1">{toast.message}</div>
+          <button
+            className="rounded-lg px-2 py-1 hover:bg-black/5"
+            onClick={() => setToast(null)}
+            title="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* TABLE CARD */}
       <div className="rounded-2xl bg-white border border-slate-200 shadow-sm">
-        {/* SEARCH (match other pages) */}
+        {/* SEARCH */}
         <div className="p-6 border-b border-slate-100">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -229,7 +266,9 @@ const ViewUsers = () => {
                 <th className="px-6 py-4 font-semibold w-36">Badge</th>
                 <th className="px-6 py-4 font-semibold w-32">Role</th>
                 <th className="px-6 py-4 font-semibold w-48">Last Login</th>
-                <th className="px-6 py-4 font-semibold text-right w-28">Actions</th>
+                <th className="px-6 py-4 font-semibold text-right w-28">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -250,8 +289,12 @@ const ViewUsers = () => {
                           {(user.name || user.email).substring(0, 2)}
                         </div>
                         <div>
-                          <div className="font-semibold text-slate-900">{user.name}</div>
-                          <div className="text-sm text-slate-500">{user.email}</div>
+                          <div className="font-semibold text-slate-900">
+                            {user.name}
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {user.email}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -281,7 +324,7 @@ const ViewUsers = () => {
                       {user.last_login || "Never"}
                     </td>
 
-                    {/* Actions (Edit/Delete) */}
+                    {/* Actions */}
                     <td className="px-6 py-5">
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -293,7 +336,7 @@ const ViewUsers = () => {
                         </button>
 
                         <button
-                          onClick={() => handleDelete(user.user_id)}
+                          onClick={() => setDeleteTarget(user)}
                           className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 hover:text-red-600"
                           title="Delete user"
                         >
@@ -314,11 +357,11 @@ const ViewUsers = () => {
           </table>
         </div>
 
-        {/* FOOTER (match other pages) */}
+        {/* FOOTER */}
         <div className="px-6 py-4 border-t border-slate-100 text-sm text-slate-500 flex items-center justify-between">
           <span>
-            Showing <span className="font-medium">{filteredUsers.length}</span> result
-            {filteredUsers.length === 1 ? "" : "s"}
+            Showing <span className="font-medium">{filteredUsers.length}</span>{" "}
+            result{filteredUsers.length === 1 ? "" : "s"}
           </span>
           <span className="hidden sm:block">Total users: {users.length}</span>
         </div>
@@ -339,7 +382,9 @@ const ViewUsers = () => {
             {/* Header */}
             <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4 sticky top-0 bg-white z-10">
               <div>
-                <div className="text-lg font-semibold text-slate-900">Create New User</div>
+                <div className="text-lg font-semibold text-slate-900">
+                  Create New User
+                </div>
                 <div className="mt-1 text-sm text-slate-500">Add a new user</div>
               </div>
 
@@ -364,10 +409,10 @@ const ViewUsers = () => {
                 </div>
               )}
 
-  
-              {/* Name Input */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Name</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Name
+                </label>
                 <input
                   value={newUser.name}
                   onChange={(e) => handleCreateChange("name", e.target.value)}
@@ -376,9 +421,10 @@ const ViewUsers = () => {
                 />
               </div>
 
-              {/* Email Input */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   value={newUser.email}
@@ -388,23 +434,29 @@ const ViewUsers = () => {
                 />
               </div>
 
-              {/* Badge Input */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Badge Number</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Badge Number
+                </label>
                 <input
                   value={newUser.badge_number}
-                  onChange={(e) => handleCreateChange("badge_number", e.target.value)}
+                  onChange={(e) =>
+                    handleCreateChange("badge_number", e.target.value)
+                  }
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. 12345"
                 />
               </div>
 
-              {/* Role Select */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Role</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Role
+                </label>
                 <select
                   value={newUser.role}
-                  onChange={(e) => handleCreateChange("role", e.target.value as CreateUserForm["role"])}
+                  onChange={(e) =>
+                    handleCreateChange("role", e.target.value as CreateUserForm["role"])
+                  }
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="picker">picker</option>
@@ -414,7 +466,7 @@ const ViewUsers = () => {
               </div>
             </div>
 
-            {/* Modal Actions */}
+            {/* Actions */}
             <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
               <button
                 onClick={() => {
@@ -511,14 +563,76 @@ const ViewUsers = () => {
               <button
                 onClick={() => setEditingUser(null)}
                 className="rounded-xl px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50"
+                disabled={isSaving}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveUser}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700"
+                disabled={isSaving}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
               >
-                Save Changes
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- DELETE CONFIRM MODAL --- */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setDeleteTarget(null);
+          }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-lg font-semibold text-slate-900">Delete user?</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  This action can’t be undone.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 text-sm text-slate-700 space-y-2">
+              <div>
+                You are about to delete:
+                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="font-semibold text-slate-900">{deleteTarget.name}</div>
+                  <div className="text-slate-500">{deleteTarget.email}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-xl px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="rounded-xl bg-red-600 px-4 py-2 text-white font-medium hover:bg-red-700 disabled:opacity-60"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
