@@ -87,26 +87,53 @@ const ViewUsers = () => {
   };
 
   const handleCreateUser = async () => {
-    if (!newUser.name || !newUser.email) {
-      setCreateError("Name and Email are required.");
+    // Basic validation
+    if (!newUser.name || !newUser.email || !newUser.badge_number) {
+      setCreateError("Name, Email, and Badge Number are required.");
       return;
     }
 
     try {
+      // API Call - Create User (POST)
+      // We manually add 'hashed_password' here to satisfy the backend requirement
+      
+      const requestBody = {
+        name: newUser.name,
+        email: newUser.email,
+        badge_number: newUser.badge_number,
+        role: newUser.role,
+        hashed_password: "temp_default_password" // Temporary password for demo purposes
+      }
+      console.log("Creating user with data:", requestBody);
+      
       const res = await fetch(`${API_BASE_URL}/v1/users/create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...newUser,
-          hashed_password: "temp_default_password",
-        }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
       });
 
-      if (!res.ok) throw new Error("Failed to create user");
-
-      const createdUser = await res.json();
-      setUsers((prev) => [...prev, createdUser]);
-
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("API Error Response:", errorData);
+        if (errorData.detail) {
+        if (Array.isArray(errorData.detail)) {
+          // Validatie errors zijn vaak een array
+          const errorMessages = errorData.detail.map(err => 
+            `${err.loc?.join(' → ')}: ${err.msg}`
+          ).join(', ');
+          throw new Error(errorMessages);
+        } else {
+          throw new Error(errorData.detail);
+        }
+      }
+      throw new Error("Failed to create user");
+    }
+      const createdUser = await res.json(); 
+      
+      // Update UI: Add new user to the list immediately
+      setUsers(prev => [...prev, createdUser]);
+      
+      // Reset Form and Close Modal
       setNewUser({ name: "", email: "", badge_number: "", role: "picker" });
       setIsCreateOpen(false);
       setCreateError("");
@@ -118,7 +145,27 @@ const ViewUsers = () => {
     }
   };
 
-  // --- EDIT HANDLERS ---
+  // --- EDIT & DELETE HANDLERS --- 
+
+  // Delete User Handler
+  const handleDelete = async (user_id: number) => {
+    const confirmDelete = window.confirm("Are you sure you want to remove this user?");
+    if (!confirmDelete) return;
+
+    try {
+      // API Call - Delete User
+      const res = await fetch(`${API_BASE_URL}/v1/users/${user_id}`, { method: 'DELETE' });
+      
+      if (!res.ok) throw new Error("Failed to delete");
+
+      // Update UI: Remove the user with this ID from the state
+      setUsers((prev) => prev.filter((user) => user.user_id !== user_id));
+      
+    } catch (error) {
+      console.error(error);
+      alert("Failed to delete user");
+    }
+  };
 
   const handleEditClick = (user: UserData) => {
     setEditingUser({ ...user });
