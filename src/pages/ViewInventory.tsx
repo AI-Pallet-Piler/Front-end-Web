@@ -196,7 +196,7 @@ export default function ViewInventory() {
                       </div>
                     </td>
 
-                    {/* ✅ Just the count (no click) */}
+                    {/* Just the count (no click) */}
                     <td className="px-6 py-5 text-slate-700 whitespace-nowrap">
                       <span className="font-medium">
                         {locCount} location{locCount === 1 ? "" : "s"}
@@ -207,7 +207,7 @@ export default function ViewInventory() {
                       <StatusBadge qty={totalQty} />
                     </td>
 
-                    {/* ✅ Actions: Eye (view details) + PackagePlus (edit) */}
+                    {/* Actions: Eye (view details) + PackagePlus (edit) */}
                     <td className="px-6 py-5">
                       <div className="flex items-center justify-end gap-2">
                         {/* View details */}

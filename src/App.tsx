@@ -8,6 +8,7 @@ import ViewProduct from "./pages/ViewProduct";
 import AddProduct from "./pages/AddProduct";
 import EditProduct from "./pages/EditProduct";
 import ViewInventory from "./pages/ViewInventory";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import RequireAuth from "./routes/RequireAuth";
 
@@ -32,6 +33,9 @@ function App() {
 
             {/* INVENTORY */}
             <Route path="/inventory" element={<ViewInventory />} />
+            
+            {/* SETTINGS */}
+          <Route path="/settings" element={<Settings />} />
 
             {/* Admin-only routes */}
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
