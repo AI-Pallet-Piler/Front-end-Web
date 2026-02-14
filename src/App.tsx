@@ -11,6 +11,7 @@ import ViewInventory from "./pages/ViewInventory";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import RequireAuth from "./routes/RequireAuth";
+import Orders from "./pages/Orders";
 
 function App() {
   return (
@@ -25,6 +26,9 @@ function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/users" element={<ManageUsers />} />
+
+            {/* Orders */}
+            <Route path="/orders" element={<Orders />} />
 
             {/* PRODUCTS */}
             <Route path="/products" element={<ViewProduct />} />
