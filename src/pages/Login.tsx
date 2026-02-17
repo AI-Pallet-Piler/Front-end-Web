@@ -69,7 +69,7 @@ const Login: React.FC = () => {
         const userData = await response.json()
 
         // Validate badge API response structure
-        if (!userData.role) {
+        if (!userData.role || !userData.name) {
           setError('Invalid response from server. Please contact support.')
           setIsLoading(false)
           return
@@ -120,14 +120,22 @@ const Login: React.FC = () => {
         return
       }
       
-      const userRole = userData.role.toLowerCase() as UserRole
+      const userRole = userData.role.toLowerCase()
+      
+      // Validate that the role is one of the expected values
+      if (userRole !== 'admin' && userRole !== 'manager' && userRole !== 'picker') {
+        setError('Invalid user role. Please contact support.')
+        setIsLoading(false)
+        return
+      }
+      
       if (userRole === 'picker') {
         setError('Pickers must use the Badge Number login')
         setIsLoading(false)
         return
       }
 
-      login(userRole, userData.name, userData.id)
+      login(userRole as UserRole, userData.name, userData.id)
       navigate('/dashboard')
 
     } catch (err) {
