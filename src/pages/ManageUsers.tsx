@@ -95,13 +95,14 @@ const ViewUsers = () => {
 
     try {
       // API Call - Create User (POST)
-      // Password will be hashed by the backend
+      // Note: The backend expects 'password' field (not 'hashed_password')
+      // The password will be hashed by the backend before storage
       const res = await fetch(`${API_BASE_URL}/v1/users/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newUser,
-          password: "temp_default_password" 
+          password: "temp_default_password" // TODO: Implement secure password generation
         }),
       });
 
@@ -121,7 +122,7 @@ const ViewUsers = () => {
         }
         throw new Error("Failed to create user");
       }
-      
+
       const createdUser = await res.json(); 
       
       // Update UI: Add new user to the list immediately
