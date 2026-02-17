@@ -108,7 +108,7 @@ const ViewUsers = () => {
         }
         throw new Error("Failed to create user");
       }
-      
+
       const createdUser = await res.json(); 
       
       // Update UI: Add new user to the list immediately

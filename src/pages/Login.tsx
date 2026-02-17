@@ -1,17 +1,19 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import type { UserRole } from '../data/navItems'
 
-type Role = 'manager' | 'picker'
+type LoginRole = 'manager' | 'picker'
 
 interface LoginState {
-  role: Role
+  role: LoginRole
   email: string
   password: string
   badgeNumber: string
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+const PICKER_APP_URL = import.meta.env.VITE_PICKER_APP_URL || "http://localhost:3000";
 
 const Login: React.FC = () => {
   const [state, setState] = useState<LoginState>({ 
@@ -31,7 +33,7 @@ const Login: React.FC = () => {
     setError('')
   }
 
-  const handleRole = (role: Role) => {
+  const handleRole = (role: LoginRole) => {
     setState((s) => ({ ...s, role }))
     setError('')
   }
@@ -66,13 +68,20 @@ const Login: React.FC = () => {
 
         const userData = await response.json()
 
+        // Validate badge API response structure
+        if (!userData.role) {
+          setError('Invalid response from server. Please contact support.')
+          setIsLoading(false)
+          return
+        }
+
         if (userData.role !== 'picker') {
           setError('This badge is not registered as a picker. Use Manager/Admin login.')
           setIsLoading(false)
           return
         }
 
-        window.location.href = `http://localhost:3000/login?badge=${state.badgeNumber}&auto=true`
+        window.location.href = `${PICKER_APP_URL}/login?badge=${state.badgeNumber}&auto=true`
         return
       }
 
@@ -104,14 +113,21 @@ const Login: React.FC = () => {
 
       const userData = await response.json()
       
-      const userRole = userData.role.toLowerCase()
+      // Validate login API response structure
+      if (!userData.role || !userData.email || !userData.id || !userData.name) {
+        setError('Invalid response from server. Please contact support.')
+        setIsLoading(false)
+        return
+      }
+      
+      const userRole = userData.role.toLowerCase() as UserRole
       if (userRole === 'picker') {
         setError('Pickers must use the Badge Number login')
         setIsLoading(false)
         return
       }
 
-      login(userRole, userData.email, userData.id)
+      login(userRole, userData.name, userData.id)
       navigate('/dashboard')
 
     } catch (err) {

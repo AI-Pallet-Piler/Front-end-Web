@@ -47,7 +47,7 @@ function AppRoutes() {
 
           {/* Admin-only routes */}
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-            <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/user-management" element={<Users />} />
           </Route>
         </Route>
       ) : (

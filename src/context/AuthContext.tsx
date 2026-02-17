@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type { UserRole } from "../data/navItems";
 
 type User = {
@@ -36,12 +36,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (role: UserRole, name: string, id: number) => {
     const newUser = { id, name, role };
     setUser(newUser);
-    localStorage.setItem("auth_user", JSON.stringify(newUser));
+    try {
+      localStorage.setItem("auth_user", JSON.stringify(newUser));
+    } catch (e) {
+      console.error("Failed to persist auth state:", e);
+    }
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("auth_user");
+    try {
+      localStorage.removeItem("auth_user");
+    } catch (e) {
+      console.error("Failed to clear auth state:", e);
+    }
   };
 
   return (
