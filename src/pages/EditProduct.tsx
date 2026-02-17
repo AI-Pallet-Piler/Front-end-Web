@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { ArrowLeft, Save } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-
-// API Configuration
-const API_BASE_URL = "http://localhost:8080/api";
+import { API_BASE_URL } from "../config/api";
 
 export type Product = {
   product_id: number;

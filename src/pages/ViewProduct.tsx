@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Eye, Search, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import ViewProductModal from "../components/ViewProductModal";
-
-// API Configuration
-const API_BASE_URL = "http://localhost:8080/api";
+import { API_BASE_URL } from "../config/api";
 
 export type Product = {
   product_id: number;
