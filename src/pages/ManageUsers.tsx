@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 
 // API Configuration
-const API_BASE_URL = "http://localhost:8080/api"; 8
+const API_BASE_URL = "http://localhost:8080/api";
+
 // Interface to define the shape of user data
 interface UserData {
   user_id: number;
@@ -81,39 +82,33 @@ const ViewUsers = () => {
 
     try {
       // API Call - Create User (POST)
-      // We manually add 'hashed_password' here to satisfy the backend requirement
-      
-      const requestBody = {
-        name: newUser.name,
-        email: newUser.email,
-        badge_number: newUser.badge_number,
-        role: newUser.role,
-        hashed_password: "temp_default_password" // Temporary password for demo purposes
-      }
-      console.log("Creating user with data:", requestBody);
-      
+      // Password will be hashed by the backend
       const res = await fetch(`${API_BASE_URL}/v1/users/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          ...newUser,
+          password: "temp_default_password" 
+        }),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
         console.error("API Error Response:", errorData);
         if (errorData.detail) {
-        if (Array.isArray(errorData.detail)) {
-          // Validatie errors zijn vaak een array
-          const errorMessages = errorData.detail.map(err => 
-            `${err.loc?.join(' → ')}: ${err.msg}`
-          ).join(', ');
-          throw new Error(errorMessages);
-        } else {
-          throw new Error(errorData.detail);
+          if (Array.isArray(errorData.detail)) {
+            // Validation errors are often an array
+            const errorMessages = errorData.detail.map((err: any) => 
+              `${err.loc?.join(' -> ')}: ${err.msg}`
+            ).join(', ');
+            throw new Error(errorMessages);
+          } else {
+            throw new Error(errorData.detail);
+          }
         }
+        throw new Error("Failed to create user");
       }
-      throw new Error("Failed to create user");
-    }
+      
       const createdUser = await res.json(); 
       
       // Update UI: Add new user to the list immediately

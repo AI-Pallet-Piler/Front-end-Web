@@ -9,37 +9,58 @@ import AddProduct from "./pages/AddProduct";
 import EditProduct from "./pages/EditProduct";
 import ViewInventory from "./pages/ViewInventory";
 import Login from "./pages/Login";
-import RequireAuth from "./routes/RequireAuth";
+import { useAuth } from "./context/AuthContext";
+
+function AppRoutes() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      {/* Public route - Login */}
+      <Route 
+        path="/login" 
+        element={user ? <Navigate to="/dashboard" replace /> : <Login />} 
+      />
+
+      {/* Protected routes */}
+      {user ? (
+        <Route element={<Layout />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/users" element={<ManageUsers />} />
+          
+          {/* PRODUCTS */}
+          <Route path="/products" element={<ViewProduct />} />
+          <Route path="/products/add" element={<AddProduct />} />
+          <Route path="/products/:productId/edit" element={<EditProduct />} />
+
+          {/* INVENTORY */}
+          <Route path="/inventory" element={<ViewInventory />} />
+
+          {/* Admin-only routes */}
+          <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+            <Route path="/admin/users" element={<Users />} />
+          </Route>
+        </Route>
+      ) : (
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      )}
+    </Routes>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public route: login (no sidebar/layout) */}
-        <Route path="/login" element={<Login />} />
-
-        {/* Protected app routes: require auth, then render Layout with sidebar */}
-        <Route element={<RequireAuth />}>
-          <Route element={<Layout />}> 
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/users" element={<ManageUsers />} />
-
-            {/* PRODUCTS */}
-            <Route path="/products" element={<ViewProduct />} />
-            <Route path="/products/add" element={<AddProduct />} />
-            <Route path="/products/:productId/edit" element={<EditProduct />} />
-
-            {/* INVENTORY */}
-            <Route path="/inventory" element={<ViewInventory />} />
-
-            {/* Admin-only routes */}
-            <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-              <Route path="/users" element={<Users />} />
-            </Route>
-          </Route>
-        </Route>
-      </Routes>
+      <AppRoutes />
     </BrowserRouter>
   );
 }
