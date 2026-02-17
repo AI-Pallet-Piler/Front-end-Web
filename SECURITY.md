@@ -27,6 +27,12 @@ Consider implementing one or more of the following security enhancements:
    - Log all authentication attempts for security monitoring
    - Consider implementing CAPTCHA for repeated failed attempts
 
+4. **Secure Badge Number Transmission**
+   - Currently, badge numbers are passed as URL parameters during picker app redirect
+   - Badge numbers in URLs can be exposed in browser history, server logs, or referrer headers
+   - Consider using a POST request or temporary token-based approach instead
+   - Alternatively, implement session-based authentication that doesn't expose credentials in URLs
+
 ## Temporary Passwords
 
 ### User Creation

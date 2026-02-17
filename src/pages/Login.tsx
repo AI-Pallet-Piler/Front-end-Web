@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import type { UserRole } from '../data/navItems'
 
 type LoginRole = 'manager' | 'picker'
 
@@ -15,6 +14,11 @@ interface LoginState {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
 const PICKER_APP_URL = import.meta.env.VITE_PICKER_APP_URL || "http://localhost:3000";
 const VALID_ROLES = ['admin', 'manager', 'picker'] as const;
+
+// Type guard for role validation
+function isValidRole(role: string): role is typeof VALID_ROLES[number] {
+  return VALID_ROLES.includes(role as typeof VALID_ROLES[number]);
+}
 
 const Login: React.FC = () => {
   const [state, setState] = useState<LoginState>({ 
@@ -124,7 +128,7 @@ const Login: React.FC = () => {
       const userRole = userData.role.toLowerCase()
       
       // Validate that the role is one of the expected values
-      if (!VALID_ROLES.includes(userRole as typeof VALID_ROLES[number])) {
+      if (!isValidRole(userRole)) {
         setError('Invalid user role. Please contact support.')
         setIsLoading(false)
         return
@@ -136,7 +140,7 @@ const Login: React.FC = () => {
         return
       }
 
-      login(userRole as UserRole, userData.name, userData.id)
+      login(userRole, userData.name, userData.id)
       navigate('/dashboard')
 
     } catch (err) {
