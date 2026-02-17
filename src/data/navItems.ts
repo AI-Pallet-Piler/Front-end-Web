@@ -4,6 +4,7 @@ import {
   Boxes,
   Users,
   Settings,
+  ShoppingCart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ export type NavItem = {
 export const navItems: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutGrid, roles: ["admin", "manager"] },
 
+  { label: "Orders", to: "/orders", icon: ShoppingCart, roles: ["admin", "manager", "picker"] },
   { label: "Products", to: "/products", icon: Package, roles: ["admin", "manager"] },
   { label: "Inventory", to: "/inventory", icon: Boxes, roles: ["admin", "manager"] },
 

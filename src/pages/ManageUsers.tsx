@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import {Search, UserPlus, Trash2, X, Pencil, CheckCircle2, AlertTriangle,} from "lucide-react";
 
 // API Configuration
 const API_BASE_URL = "http://localhost:8080/api";
@@ -31,6 +32,7 @@ const ViewUsers = () => {
 
   // Edit State
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Create User State
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
@@ -42,21 +44,34 @@ const ViewUsers = () => {
     role: "picker",
   });
 
+  // Delete confirmation modal state
+  const [deleteTarget, setDeleteTarget] = useState<UserData | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // Toast / banner state
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const showToast = (t: { type: "success" | "error"; message: string }) => {
+    setToast(t);
+    window.setTimeout(() => setToast(null), 2500);
+  };
+
   // Fetch users on component mount
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // API Call - Get all users
         const res = await fetch(`${API_BASE_URL}/v1/users`);
         if (!res.ok) throw new Error("Failed to fetch");
-        
+
         const data = await res.json();
-        
-        // Ensure data is an array before setting state
         setUsers(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching users:", error);
-        setUsers([]); 
+        setUsers([]);
+        showToast({ type: "error", message: "Failed to fetch users." });
       } finally {
         setIsLoading(false);
       }
@@ -67,12 +82,10 @@ const ViewUsers = () => {
 
   // --- CREATE USER HANDLERS ---
 
-  // 1. Handle Input Changes for New User
   const handleCreateChange = (field: keyof CreateUserForm, value: string) => {
-    setNewUser(prev => ({ ...prev, [field]: value }));
+    setNewUser((prev) => ({ ...prev, [field]: value }));
   };
 
-  // 2. Submit New User to API
   const handleCreateUser = async () => {
     // Basic validation
     if (!newUser.name || !newUser.email || !newUser.badge_number) {
@@ -118,11 +131,11 @@ const ViewUsers = () => {
       setNewUser({ name: "", email: "", badge_number: "", role: "picker" });
       setIsCreateOpen(false);
       setCreateError("");
-      alert("User created successfully!");
-
+      showToast({ type: "success", message: "User created successfully!" });
     } catch (error) {
       console.error(error);
       setCreateError("Failed to create user. Check backend logs.");
+      showToast({ type: "error", message: "Failed to create user." });
     }
   };
 
@@ -148,127 +161,194 @@ const ViewUsers = () => {
     }
   };
 
-  // 1. Open the edit modal with the user's data
   const handleEditClick = (user: UserData) => {
-    setEditingUser({ ...user }); 
+    setEditingUser({ ...user });
   };
 
-  // 2. Handle input changes inside the edit modal
   const handleEditChange = (field: keyof UserData, value: string) => {
-    if (editingUser) {
-      setEditingUser({ ...editingUser, [field]: value } as UserData);
-    }
+    if (!editingUser) return;
+    setEditingUser({ ...editingUser, [field]: value } as UserData);
   };
 
-  // 3. Save changes (PUT Request)
   const handleSaveUser = async () => {
     if (!editingUser) return;
 
+    setIsSaving(true);
     try {
-      // API Call - Update User
       const res = await fetch(`${API_BASE_URL}/v1/users/${editingUser.user_id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingUser),
       });
 
       if (!res.ok) throw new Error("Failed to update");
-      
-      const updatedUser = await res.json(); 
-      
-      // Update local state: Find the user by ID and replace with new data
-      setUsers(prev => prev.map(u => (u.user_id === editingUser.user_id ? updatedUser : u)));
-      
-      setEditingUser(null); // Close modal
-      alert("User updated successfully!");
+
+      const updatedUser = await res.json();
+
+      setUsers((prev) =>
+        prev.map((u) => (u.user_id === editingUser.user_id ? updatedUser : u))
+      );
+
+      setEditingUser(null);
+      showToast({ type: "success", message: "User updated successfully!" });
     } catch (error) {
       console.error(error);
-      alert("Failed to update user");
+      showToast({ type: "error", message: "Failed to update user." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // --- DELETE HANDLERS ---
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/v1/users/${deleteTarget.user_id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Failed to delete");
+
+      setUsers((prev) => prev.filter((u) => u.user_id !== deleteTarget.user_id));
+      showToast({
+        type: "success",
+        message: `User "${deleteTarget.name}" deleted.`,
+      });
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error(error);
+      showToast({ type: "error", message: "Failed to delete user." });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   // Search filter logic
-  const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return users;
+
+    return users.filter(
+      (user) =>
+        user.email.toLowerCase().includes(q) ||
+        user.role.toLowerCase().includes(q) ||
+        user.name.toLowerCase().includes(q)
+    );
+  }, [users, searchTerm]);
 
   return (
-    <div className="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-slate-200 my-10">
-      
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
+    <div className="space-y-6">
+      {/* PAGE HEADER*/}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">User Management</h2>
-          <p className="text-slate-500 text-sm">View and manage system access.</p>
+          <h1 className="text-4xl font-bold text-slate-900">User Management</h1>
+          <p className="mt-2 text-slate-500">View and manage system access.</p>
         </div>
-        
-        <div className="flex gap-3 w-full md:w-auto">
-          {/* Search Bar */}
-          <div className="relative w-full">
-            <input 
-              type="text" 
-              placeholder="Search users..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-4 pr-10 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none w-full"
-            />
-          </div>
 
-          {/* NEW: Create User Button */}
-          <button 
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap flex items-center gap-2"
-          >
-            <span>+</span> Add User
-          </button>
-        </div>
+        <button
+          onClick={() => setIsCreateOpen(true)}
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-700"
+        >
+          <UserPlus className="h-5 w-5" />
+          Add User
+        </button>
       </div>
 
-      {/* Loading State */}
-      {isLoading ? (
-        <div className="text-center py-20 text-slate-400 animate-pulse">
-          Loading users...
+      {/* Toast / feedback banner */}
+      {toast && (
+        <div
+          className={`rounded-2xl border px-4 py-3 text-sm flex items-start gap-2 ${
+            toast.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-red-200 bg-red-50 text-red-800"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 className="h-5 w-5 mt-0.5" />
+          ) : (
+            <AlertTriangle className="h-5 w-5 mt-0.5" />
+          )}
+          <div className="flex-1">{toast.message}</div>
+          <button
+            className="rounded-lg px-2 py-1 hover:bg-black/5"
+            onClick={() => setToast(null)}
+            title="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      ) : (
-        /* Table */
-        <div className="overflow-x-auto rounded-lg border border-slate-200">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+      )}
+
+      {/* TABLE CARD */}
+      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm">
+        {/* SEARCH */}
+        <div className="p-6 border-b border-slate-100">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* TABLE */}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] table-fixed">
             <thead>
-              <tr className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
-                <th className="p-4 font-semibold border-b">User</th>
-                <th className="p-4 font-semibold border-b">Badge</th>
-                <th className="p-4 font-semibold border-b">Role</th>
-                <th className="p-4 font-semibold border-b">Last Login</th>
-                <th className="p-4 font-semibold border-b text-right">Actions</th>
+              <tr className="text-left text-slate-500 text-sm border-b border-slate-100">
+                <th className="px-6 py-4 font-semibold">User</th>
+                <th className="px-6 py-4 font-semibold w-36">Badge</th>
+                <th className="px-6 py-4 font-semibold w-32">Role</th>
+                <th className="px-6 py-4 font-semibold w-48">Last Login</th>
+                <th className="px-6 py-4 font-semibold text-right w-28">
+                  Actions
+                </th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-slate-100">
-              {filteredUsers.length > 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center text-slate-400">
+                    Loading users…
+                  </td>
+                </tr>
+              ) : filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
-                  <tr key={user.user_id} className="hover:bg-slate-50 transition-colors">
-                    
-                    {/* 1. User Info (Avatar + Name + Email) */}
-                    <td className="p-4">
+                  <tr key={user.user_id} className="hover:bg-slate-50">
+                    {/* User */}
+                    <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-sm uppercase">
-                          {user.email.substring(0, 2)}
+                        <div className="h-10 w-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm uppercase">
+                          {(user.name || user.email).substring(0, 2)}
                         </div>
                         <div>
-                          <div className="font-medium text-slate-900">{user.name}</div>
-                          <div className="text-sm text-slate-500">{user.email}</div>
+                          <div className="font-semibold text-slate-900">
+                            {user.name}
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {user.email}
+                          </div>
                         </div>
                       </div>
                     </td>
 
-                    {/* 2. Badge Number */}
-                    <td className="p-4 text-sm text-slate-600 font-mono">{user.badge_number}</td>
+                    {/* Badge */}
+                    <td className="px-6 py-5 text-sm text-slate-700 font-mono">
+                      {user.badge_number || "—"}
+                    </td>
 
-                    {/* 3. Role Badge */}
-                    <td className="p-4">
+                    {/* Role */}
+                    <td className="px-6 py-5">
                       <span
-                        className={`px-2 py-1 rounded-full text-xs font-bold border capitalize ${
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
                           user.role === "Admin"
                             ? "bg-purple-100 text-purple-700 border-purple-200"
                             : user.role === "Manager"
@@ -280,95 +360,145 @@ const ViewUsers = () => {
                       </span>
                     </td>
 
-                    {/* 4. Last Login */}
-                    <td className="p-4 text-sm text-slate-500 font-mono">
+                    {/* Last Login */}
+                    <td className="px-6 py-5 text-sm text-slate-500 font-mono">
                       {user.last_login || "Never"}
                     </td>
 
-                    {/* 5. Actions (Edit / Delete) */}
-                    <td className="p-4 text-right space-x-2">
-                      <button 
-                        onClick={() => handleEditClick(user)}
-                        className="text-slate-400 hover:text-blue-600 font-medium text-sm px-3 py-1 rounded hover:bg-blue-50 transition-all"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(user.user_id)}
-                        className="text-slate-400 hover:text-red-600 font-medium text-sm px-3 py-1 rounded hover:bg-red-50 transition-all"
-                      >
-                        Delete
-                      </button>
+                    {/* Actions */}
+                    <td className="px-6 py-5">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleEditClick(user)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 hover:text-green-600"
+                          title="Edit user"
+                        >
+                          <Pencil className="h-5 w-5" />
+                        </button>
+
+                        <button
+                          onClick={() => setDeleteTarget(user)}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-50 hover:text-red-600"
+                          title="Delete user"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 italic">
-                    No users found.
+                  <td colSpan={5} className="px-6 py-16 text-center text-slate-400">
+                    No users match “{searchTerm}”.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      )}
 
-      {/* --- CREATE MODAL (Popup) --- */}
+        {/* FOOTER */}
+        <div className="px-6 py-4 border-t border-slate-100 text-sm text-slate-500 flex items-center justify-between">
+          <span>
+            Showing <span className="font-medium">{filteredUsers.length}</span>{" "}
+            result{filteredUsers.length === 1 ? "" : "s"}
+          </span>
+          <span className="hidden sm:block">Total users: {users.length}</span>
+        </div>
+      </div>
+
+      {/* --- CREATE MODAL --- */}
       {isCreateOpen && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-96 animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold text-slate-800 mb-4">Create New User</h3>
-            
-            {/* Error Message */}
-            {createError && (
-              <div className="bg-red-50 text-red-600 p-2 text-sm rounded mb-4 border border-red-200">
-                {createError}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {/* Name Input */}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsCreateOpen(false);
+              setCreateError("");
+            }
+          }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4 sticky top-0 bg-white z-10">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <div className="text-lg font-semibold text-slate-900">
+                  Create New User
+                </div>
+                <div className="mt-1 text-sm text-slate-500">Add a new user</div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateOpen(false);
+                  setCreateError("");
+                }}
+                className="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              {createError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {createError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Name
+                </label>
                 <input
                   value={newUser.name}
                   onChange={(e) => handleCreateChange("name", e.target.value)}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="John Doe"
                 />
               </div>
 
-              {/* Email Input */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   value={newUser.email}
                   onChange={(e) => handleCreateChange("email", e.target.value)}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="john@example.com"
                 />
               </div>
 
-              {/* Badge Input */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Badge Number</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Badge Number
+                </label>
                 <input
                   value={newUser.badge_number}
-                  onChange={(e) => handleCreateChange("badge_number", e.target.value)}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  onChange={(e) =>
+                    handleCreateChange("badge_number", e.target.value)
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. 12345"
                 />
               </div>
 
-              {/* Role Select */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">
+                  Role
+                </label>
                 <select
                   value={newUser.role}
-                  onChange={(e) => handleCreateChange('role', e.target.value as CreateUserForm['role'])}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  onChange={(e) =>
+                    handleCreateChange("role", e.target.value as CreateUserForm["role"])
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="picker">picker</option>
                   <option value="Manager">Manager</option>
@@ -377,20 +507,20 @@ const ViewUsers = () => {
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex justify-end gap-3 mt-6">
+            {/* Actions */}
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
               <button
                 onClick={() => {
-                   setIsCreateOpen(false);
-                   setCreateError("");
+                  setIsCreateOpen(false);
+                  setCreateError("");
                 }}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                className="rounded-xl px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateUser}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="rounded-xl bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700"
               >
                 Create User
               </button>
@@ -399,47 +529,68 @@ const ViewUsers = () => {
         </div>
       )}
 
-      {/* --- EDIT MODAL (Popup) --- */}
+      {/* --- EDIT MODAL  --- */}
       {editingUser && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-96 animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold text-slate-800 mb-4">Edit User</h3>
-
-            <div className="space-y-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setEditingUser(null);
+          }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4 sticky top-0 bg-white z-10">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <div className="text-lg font-semibold text-slate-900">Edit User</div>
+                <div className="mt-1 text-sm text-slate-500">Update user details</div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Name</label>
                 <input
                   value={editingUser.name}
                   onChange={(e) => handleEditChange("name", e.target.value)}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Email</label>
                 <input
                   type="email"
                   value={editingUser.email}
                   onChange={(e) => handleEditChange("email", e.target.value)}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Badge Number</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Badge Number</label>
                 <input
                   value={editingUser.badge_number}
                   onChange={(e) => handleEditChange("badge_number", e.target.value)}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Role</label>
                 <select
                   value={editingUser.role}
-                  onChange={(e) => handleEditChange('role', e.target.value as UserData['role'])}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  onChange={(e) => handleEditChange("role", e.target.value as UserData["role"])}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="picker">picker</option>
                   <option value="Manager">Manager</option>
@@ -448,25 +599,86 @@ const ViewUsers = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white">
               <button
                 onClick={() => setEditingUser(null)}
-                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                className="rounded-xl px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50"
+                disabled={isSaving}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveUser}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                disabled={isSaving}
+                className="rounded-xl bg-blue-600 px-4 py-2 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
               >
-                Save Changes
+                {isSaving ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="mt-4 text-xs text-slate-400 text-right">Total Users: {filteredUsers.length}</div>
+      {/* --- DELETE CONFIRM MODAL --- */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setDeleteTarget(null);
+          }}
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-slate-200 overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-lg font-semibold text-slate-900">Delete user?</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  This action can’t be undone.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 text-sm text-slate-700 space-y-2">
+              <div>
+                You are about to delete:
+                <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="font-semibold text-slate-900">{deleteTarget.name}</div>
+                  <div className="text-slate-500">{deleteTarget.email}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-xl px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="rounded-xl bg-red-600 px-4 py-2 text-white font-medium hover:bg-red-700 disabled:opacity-60"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

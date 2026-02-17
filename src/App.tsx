@@ -8,7 +8,9 @@ import ViewProduct from "./pages/ViewProduct";
 import AddProduct from "./pages/AddProduct";
 import EditProduct from "./pages/EditProduct";
 import ViewInventory from "./pages/ViewInventory";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
+import Orders from "./pages/Orders";
 import { useAuth } from "./context/AuthContext";
 
 function AppRoutes() {
@@ -37,6 +39,9 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/users" element={<ManageUsers />} />
           
+          {/* Orders */}
+          <Route path="/orders" element={<Orders />} />
+          
           {/* PRODUCTS */}
           <Route path="/products" element={<ViewProduct />} />
           <Route path="/products/add" element={<AddProduct />} />
@@ -44,6 +49,9 @@ function AppRoutes() {
 
           {/* INVENTORY */}
           <Route path="/inventory" element={<ViewInventory />} />
+          
+          {/* SETTINGS */}
+          <Route path="/settings" element={<Settings />} />
 
           {/* Admin-only routes */}
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
