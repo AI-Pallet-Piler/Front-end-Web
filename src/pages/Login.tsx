@@ -14,6 +14,7 @@ interface LoginState {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
 const PICKER_APP_URL = import.meta.env.VITE_PICKER_APP_URL || "http://localhost:3000";
+const VALID_ROLES = ['admin', 'manager', 'picker'] as const;
 
 const Login: React.FC = () => {
   const [state, setState] = useState<LoginState>({ 
@@ -69,7 +70,7 @@ const Login: React.FC = () => {
         const userData = await response.json()
 
         // Validate badge API response structure
-        if (!userData.role || !userData.name) {
+        if (!userData.role || !userData.name || !userData.id) {
           setError('Invalid response from server. Please contact support.')
           setIsLoading(false)
           return
@@ -123,7 +124,7 @@ const Login: React.FC = () => {
       const userRole = userData.role.toLowerCase()
       
       // Validate that the role is one of the expected values
-      if (userRole !== 'admin' && userRole !== 'manager' && userRole !== 'picker') {
+      if (!VALID_ROLES.includes(userRole as typeof VALID_ROLES[number])) {
         setError('Invalid user role. Please contact support.')
         setIsLoading(false)
         return
