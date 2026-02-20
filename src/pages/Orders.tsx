@@ -4,11 +4,11 @@ import { API_BASE_URL } from "../config/api";
 
 // Enums matching backend models
 export enum OrderStatus {
-  NEW = "new",
-  PICKING = "picking",
-  PACKING = "packing",
-  SHIPPED = "shipped",
-  CANCELLED = "cancelled",
+  NEW = "NEW",
+  PICKING = "PICKING",
+  PACKING = "PACKING",
+  SHIPPED = "SHIPPED",
+  CANCELLED = "CANCELLED",
 }
 
 // Type definitions matching backend Order model
