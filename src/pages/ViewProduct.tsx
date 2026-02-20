@@ -1,14 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, Search, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import ViewProductModal from "../components/ViewProductModal";
-
-/**
- * TODO (Backend):
- * - Replace mock data with API call
- * - Delete: call DELETE endpoint then refresh list / optimistic update
- * - Add pagination + sorting server-side
- */
+import { API_BASE_URL } from "../config/api";
 
 export type Product = {
   product_id: number;
@@ -31,60 +25,6 @@ export type Product = {
   created_at?: string | null;
   updated_at?: string | null;
 };
-
-const mockProducts: Product[] = [
-  {
-    product_id: 1,
-    sku: "PRD-001",
-    name: "Industrial Laptop",
-    description: "Rugged device for warehouse operations",
-    length_cm: 35,
-    width_cm: 25,
-    height_cm: 3,
-    weight_kg: 2.5,
-    is_fragile: true,
-    is_liquid: false,
-    requires_upright: false,
-    max_stack_layers: 2,
-    pick_frequency: 10,
-    created_at: "2026-01-10",
-    updated_at: "2026-01-12",
-  },
-  {
-    product_id: 2,
-    sku: "PRD-002",
-    name: "Safety Helmets",
-    description: "PPE",
-    length_cm: 30,
-    width_cm: 25,
-    height_cm: 20,
-    weight_kg: 0.5,
-    is_fragile: false,
-    is_liquid: false,
-    requires_upright: false,
-    max_stack_layers: 8,
-    pick_frequency: 4,
-    created_at: "2026-01-12",
-    updated_at: "2026-01-15",
-  },
-  {
-    product_id: 3,
-    sku: "PRD-003",
-    name: "Chemical Cleaner",
-    description: "Industrial cleaning chemical",
-    length_cm: 20,
-    width_cm: 20,
-    height_cm: 30,
-    weight_kg: 5,
-    is_fragile: true,
-    is_liquid: true,
-    requires_upright: true,
-    max_stack_layers: 1,
-    pick_frequency: 7,
-    created_at: "2026-01-15",
-    updated_at: "2026-01-16",
-  },
-];
 
 function Badge({
   children,
@@ -112,10 +52,10 @@ function formatDimensions(p: Product) {
 }
 
 export default function ViewProduct() {
-  // IMPORTANT: this must be stateful so we can remove products after deleting
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-
+  // State management
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // View modal state
   const [selected, setSelected] = useState<Product | null>(null);
@@ -123,6 +63,26 @@ export default function ViewProduct() {
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Fetch products on component mount
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/v1/products`);
+        if (!res.ok) throw new Error("Failed to fetch products");
+        
+        const data = await res.json();
+        setProducts(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        setProducts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -133,29 +93,27 @@ export default function ViewProduct() {
     );
   }, [products, search]);
 
-  /**
-   * TODO (Backend): replace this with an API call
-   * Example:
-   * await fetch(`/api/products/${deleteTarget.product_id}`, { method: "DELETE" })
-   */
   const confirmDelete = async () => {
     if (!deleteTarget) return;
 
     setIsDeleting(true);
 
     try {
-      // TODO (Backend): call your python api here
-      // await fetch(`http://localhost:8000/products/${deleteTarget.product_id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE_URL}/v1/products/${deleteTarget.product_id}`, { 
+        method: 'DELETE' 
+      });
+      
+      if (!res.ok) throw new Error("Failed to delete product");
 
-      // For now: optimistic UI update
+      // Optimistic UI update
       setProducts((prev) =>
         prev.filter((p) => p.product_id !== deleteTarget.product_id)
       );
 
       setDeleteTarget(null);
-    } catch (err) {
-      console.error(err);
-      alert("Delete failed");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to delete product");
     } finally {
       setIsDeleting(false);
     }
@@ -198,9 +156,22 @@ export default function ViewProduct() {
 
         {/* TABLE */}
         <div className="overflow-x-auto">
-<table className="w-full min-w-[980px] table-fixed">
-  <thead>
-    <tr className="text-left text-slate-500 text-sm border-b border-slate-100">
+          {isLoading ? (
+            <div className="p-12 text-center text-slate-500">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+              <p className="mt-4">Loading products...</p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="p-12 text-center text-slate-500">
+              <p className="text-lg font-medium">No products found</p>
+              <p className="mt-1 text-sm">
+                {search ? "Try adjusting your search" : "Add your first product to get started"}
+              </p>
+            </div>
+          ) : (
+          <table className="w-full min-w-[980px] table-fixed">
+            <thead>
+              <tr className="text-left text-slate-500 text-sm border-b border-slate-100">
                 <th className="px-6 py-4 font-semibold w-36">SKU</th>
                 <th className="px-6 py-4 font-semibold">Product</th>
                 <th className="px-6 py-4 font-semibold w-28">Weight</th>
@@ -271,16 +242,10 @@ export default function ViewProduct() {
                   </td>
                 </tr>
               ))}
-
-              {filteredProducts.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-slate-400">
-                    No products match “{search}”.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
+          )}
+          
         </div>
       </div>
 
