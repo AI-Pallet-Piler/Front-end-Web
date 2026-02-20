@@ -19,6 +19,7 @@ export type Order = {
   status: OrderStatus;
   priority: number;
   created_at: string;
+  completed_at?: string | null;
   promised_ship_date?: string | null;
 };
 
