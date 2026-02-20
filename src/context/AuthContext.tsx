@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type { UserRole } from "../data/navItems";
 
 type User = {
@@ -9,62 +9,51 @@ type User = {
 
 type AuthContextType = {
   user: User | null;
-  login: (role: UserRole, username?: string) => void;
+  login: (role: UserRole, name: string, id: number) => void;
   logout: () => void;
+  isLoading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Initialize from localStorage (demo token) so login persists across refresh
-  const [user, setUser] = useState<User | null>(() => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize from localStorage on mount
+  useEffect(() => {
     try {
-      const token = localStorage.getItem("demo_token");
-      const role = (localStorage.getItem("demo_role") || "manager") as UserRole;
-      const name = localStorage.getItem("demo_name") || "Demo User";
-      if (token) {
-        return { id: 1, name, role };
+      const storedUser = localStorage.getItem("auth_user");
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
       }
     } catch (e) {
-      throw new Error("Failed to access localStorage for auth initialization: " + (e as Error).message);
+      console.error("Failed to restore auth state:", e);
     }
-    return null;
-  });
+    setIsLoading(false);
+  }, []);
 
-  useEffect(() => {
-    // Keep localStorage in sync if user state changes externally
-    if (!user) {
-      localStorage.removeItem("demo_token");
-      localStorage.removeItem("demo_role");
-      localStorage.removeItem("demo_name");
-    }
-  }, [user]);
-
-  const login = (role: UserRole, username?: string) => {
-    const name = username || (role === "admin" ? "Admin User" : "Manager User");
+  const login = (role: UserRole, name: string, id: number) => {
+    const newUser = { id, name, role };
+    setUser(newUser);
     try {
-      localStorage.setItem("demo_token", "demo-token");
-      localStorage.setItem("demo_role", role);
-      localStorage.setItem("demo_name", name);
+      localStorage.setItem("auth_user", JSON.stringify(newUser));
     } catch (e) {
-      throw new Error("Failed to set localStorage for auth login: " + (e as Error).message);
+      console.error("Failed to persist auth state:", e);
     }
-    setUser({ id: 1, name, role });
   };
 
   const logout = () => {
-    try {
-      localStorage.removeItem("demo_token");
-      localStorage.removeItem("demo_role");
-      localStorage.removeItem("demo_name");
-    } catch (e) {
-      throw new Error((e as Error).message);  
-    }
     setUser(null);
+    try {
+      localStorage.removeItem("auth_user");
+    } catch (e) {
+      console.error("Failed to clear auth state:", e);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
