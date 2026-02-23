@@ -8,7 +8,7 @@ interface UserData {
   name: string;
   email: string;
   badge_number: string;
-  role: "Admin" | "Manager" | "Picker";  // Changed "picker" to "Picker" if backend uses this
+  role: "admin" | "manager" | "picker";
   created_at: string;
   updated_at: string;
   last_login: string | null;
@@ -19,7 +19,7 @@ type CreateUserForm = {
   name: string;
   email: string;
   badge_number: string;
-  role: "Admin" | "Manager" | "Picker";  // Match the same casing
+  role: "admin" | "manager" | "picker";
   password: string;
 };
 
@@ -42,7 +42,7 @@ const ViewUsers = () => {
     name: "",
     email: "",
     badge_number: "",
-    role: "Picker",
+    role: "picker",
     password: "",
   });
 
@@ -96,7 +96,7 @@ const ViewUsers = () => {
     }
 
     // Password required for Admin and Manager roles
-    const requiresPassword = newUser.role === "Admin" || newUser.role === "Manager";
+    const requiresPassword = newUser.role === "admin" || newUser.role === "manager";
     if (requiresPassword && !newUser.password) {
       setCreateError("Password is required for Admin and Manager roles.");
       return;
@@ -104,14 +104,12 @@ const ViewUsers = () => {
 
     try {
       // API Call - Create User (POST)
-      // We manually add 'hashed_password' here to satisfy the backend requirement
-      
       const requestBody = {
         name: newUser.name,
         email: newUser.email,
         badge_number: newUser.badge_number,
         role: newUser.role,
-        hashed_password: "temp_default_password" // Temporary password for demo purposes
+        password: newUser.password || newUser.badge_number // Use badge_number as password for pickers
       }
       console.log("Creating user with data:", requestBody);
       
@@ -143,7 +141,7 @@ const ViewUsers = () => {
       setUsers(prev => [...prev, createdUser]);
       
       // Reset Form and Close Modal
-      setNewUser({ name: "", email: "", badge_number: "", role: "Picker", password: "" });
+      setNewUser({ name: "", email: "", badge_number: "", role: "picker", password: "" });
       setIsCreateOpen(false);
       setCreateError("");
       showToast({ type: "success", message: "User created successfully!" });
@@ -195,7 +193,7 @@ const ViewUsers = () => {
       const updatePayload: Record<string, unknown> = { ...editingUser };
       
       // Include password if provided (for Admin/Manager) or use badge_number for picker
-      if (editingUser.role === "Picker") {
+      if (editingUser.role === "picker") {
         updatePayload.password = editingUser.badge_number;
       } else if (editPassword) {
         updatePayload.password = editPassword;
@@ -226,17 +224,17 @@ const ViewUsers = () => {
     }
   };
 
-  // Handle role change with confirmation for switching to Picker
+  // Handle role change with confirmation for switching to picker
   const handleEditRoleChange = (newRole: string) => {
     if (!editingUser) return;
     
-    // If switching TO Picker from Admin/Manager, show confirmation
-    if (newRole === "Picker" && (editingUser.role === "Admin" || editingUser.role === "Manager")) {
+    // If switching TO picker from admin/manager, show confirmation
+    if (newRole === "picker" && (editingUser.role === "admin" || editingUser.role === "manager")) {
       setPendingRoleChange(newRole);
     } else {
       setEditingUser({ ...editingUser, role: newRole as UserData["role"] });
-      // Clear password if switching to Picker
-      if (newRole === "Picker") {
+      // Clear password if switching to picker
+      if (newRole === "picker") {
         setEditPassword("");
       }
     }
@@ -399,9 +397,9 @@ const ViewUsers = () => {
                     <td className="px-6 py-5">
                       <span
                         className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
-                          user.role === "Admin"
+                          user.role === "admin"
                             ? "bg-purple-100 text-purple-700 border-purple-200"
-                            : user.role === "Manager"
+                            : user.role === "manager"
                             ? "bg-blue-100 text-blue-700 border-blue-200"
                             : "bg-slate-100 text-slate-600 border-slate-200"
                         }`}
@@ -534,18 +532,18 @@ const ViewUsers = () => {
                   onChange={(e) => {
                     handleCreateChange("role", e.target.value as CreateUserForm["role"]);
                     // Clear password when switching to picker
-                    if (e.target.value === "Picker") {
+                    if (e.target.value === "picker") {
                       handleCreateChange("password", "");
                     }
                   }}
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  <option value="Picker">Picker</option>
-                  <option value="Manager">Manager</option>
-                  <option value="Admin">Admin</option>
+                  <option value="picker">Picker</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
-                  {newUser.role === "Picker" 
+                  {newUser.role === "picker" 
                     ? "Pickers log in using their badge number only."
                     : "Admins and Managers require a password to log in."}
                 </p>
@@ -566,7 +564,7 @@ const ViewUsers = () => {
               </div>
 
               {/* Password field - only shown for Admin and Manager */}
-              {(newUser.role === "Admin" || newUser.role === "Manager") && (
+              {(newUser.role === "admin" || newUser.role === "manager") && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">
                     Password
@@ -661,12 +659,12 @@ const ViewUsers = () => {
                   onChange={(e) => handleEditRoleChange(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 >
-                  <option value="Picker">Picker</option>
-                  <option value="Manager">Manager</option>
-                  <option value="Admin">Admin</option>
+                  <option value="picker">Picker</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
-                  {editingUser.role === "Picker"
+                  {editingUser.role === "picker"
                     ? "Pickers log in using their badge number only."
                     : "Admins and Managers require a password to log in."}
                 </p>
@@ -682,7 +680,7 @@ const ViewUsers = () => {
               </div>
 
               {/* Password field - only shown for Admin and Manager */}
-              {(editingUser.role === "Admin" || editingUser.role === "Manager") && (
+              {(editingUser.role === "admin" || editingUser.role === "manager") && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">
                     New Password
@@ -728,7 +726,7 @@ const ViewUsers = () => {
       {/* --- ROLE CHANGE CONFIRMATION MODAL --- */}
       {pendingRoleChange && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setPendingRoleChange(null);
           }}
