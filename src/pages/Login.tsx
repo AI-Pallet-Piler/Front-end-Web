@@ -116,32 +116,47 @@ const Login: React.FC = () => {
         return
       }
 
-      const userData = await response.json()
+      const tokenData = await response.json()
       
       // Validate login API response structure
-      if (!userData.role || !userData.email || !userData.id || !userData.name) {
+      if (!tokenData.access_token || !tokenData.refresh_token) {
         setError('Invalid response from server. Please contact support.')
         setIsLoading(false)
         return
       }
       
-      const userRole = userData.role.toLowerCase()
+      // Store tokens in localStorage (will be improved to secure storage)
+      localStorage.setItem('access_token', tokenData.access_token)
+      localStorage.setItem('refresh_token', tokenData.refresh_token)
       
-      // Validate that the role is one of the expected values
-      if (!isValidRole(userRole)) {
-        setError('Invalid user role. Please contact support.')
-        setIsLoading(false)
-        return
-      }
-      
-      if (userRole === 'picker') {
-        setError('Pickers must use the Badge Number login')
-        setIsLoading(false)
-        return
-      }
+      // Decode JWT to get user info (basic decoding, not verification)
+      try {
+        const payloadBase64 = tokenData.access_token.split('.')[1]
+        const payload = JSON.parse(atob(payloadBase64))
+        
+        const userRole = payload.role.toLowerCase()
+        
+        // Validate that the role is one of the expected values
+        if (!isValidRole(userRole)) {
+          setError('Invalid user role. Please contact support.')
+          setIsLoading(false)
+          return
+        }
+        
+        if (userRole === 'picker') {
+          setError('Pickers must use the Badge Number login')
+          setIsLoading(false)
+          return
+        }
 
-      login(userRole, userData.name, userData.id)
-      navigate('/dashboard')
+        // Extract user info from token
+        login(userRole, payload.email || '', parseInt(payload.sub, 10) || 0)
+        navigate('/dashboard')
+      } catch (err) {
+        console.error('Token decode error:', err)
+        setError('Failed to process login response.')
+        setIsLoading(false)
+      }
 
     } catch (err) {
       console.error('Login error:', err)
