@@ -5,6 +5,7 @@ import { API_BASE_URL } from "../config/api";
 // Enums matching backend models
 export enum OrderStatus {
   NEW = "new",
+  READY = "ready",
   PICKING = "picking",
   PACKING = "packing",
   SHIPPED = "shipped",
@@ -40,6 +41,7 @@ export type OrderWithDetails = Order & {
 function StatusBadge({ status }: { status: OrderStatus }) {
   const styles = {
     [OrderStatus.NEW]: "bg-blue-100 text-blue-700 border-blue-200",
+    [OrderStatus.READY]: "bg-purple-100 text-purple-700 border-purple-200",
     [OrderStatus.PICKING]: "bg-yellow-100 text-yellow-700 border-yellow-200",
     [OrderStatus.PACKING]: "bg-orange-100 text-orange-700 border-orange-200",
     [OrderStatus.SHIPPED]: "bg-green-100 text-green-700 border-green-200",
@@ -48,6 +50,7 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 
   const labels = {
     [OrderStatus.NEW]: "New",
+    [OrderStatus.READY]: "Ready",
     [OrderStatus.PICKING]: "Picking",
     [OrderStatus.PACKING]: "Packing",
     [OrderStatus.SHIPPED]: "Shipped",
@@ -278,6 +281,7 @@ export default function Orders() {
     return {
       total: orders.length,
       new: orders.filter((o) => o.status === OrderStatus.NEW).length,
+      ready: orders.filter((o) => o.status === OrderStatus.READY).length,
       picking: orders.filter((o) => o.status === OrderStatus.PICKING).length,
       packing: orders.filter((o) => o.status === OrderStatus.PACKING).length,
       shipped: orders.filter((o) => o.status === OrderStatus.SHIPPED).length,
@@ -324,12 +328,12 @@ export default function Orders() {
             <div>
               <p className="text-sm text-slate-500">In Progress</p>
               <p className="mt-1 text-2xl font-bold text-slate-900">
-                {stats.picking + stats.packing}
+                {stats.ready + stats.picking + stats.packing}
               </p>
             </div>
             <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center">
               <span className="text-sm font-bold text-yellow-600">
-                {stats.picking + stats.packing}
+                {stats.ready + stats.picking + stats.packing}
               </span>
             </div>
           </div>
@@ -413,6 +417,16 @@ export default function Orders() {
               }`}
             >
               Packing
+            </button>
+            <button
+              onClick={() => setStatusFilter(OrderStatus.READY)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                statusFilter === OrderStatus.READY
+                  ? "bg-blue-600 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Ready
             </button>
             <button
               onClick={() => setStatusFilter(OrderStatus.SHIPPED)}
