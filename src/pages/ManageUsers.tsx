@@ -116,25 +116,29 @@ const ViewUsers = () => {
       const res = await fetch(`${API_BASE_URL}/v1/users/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          ...newUser,
+          password: "temp_default_password" // TODO: Implement secure password generation
+        }),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
         console.error("API Error Response:", errorData);
         if (errorData.detail) {
-        if (Array.isArray(errorData.detail)) {
-          // Validatie errors zijn vaak een array
-          const errorMessages = errorData.detail.map(err => 
-            `${err.loc?.join(' → ')}: ${err.msg}`
-          ).join(', ');
-          throw new Error(errorMessages);
-        } else {
-          throw new Error(errorData.detail);
+          if (Array.isArray(errorData.detail)) {
+            // Validation errors are often an array
+            const errorMessages = errorData.detail.map((err: any) => 
+              `${err.loc?.join(' -> ')}: ${err.msg}`
+            ).join(', ');
+            throw new Error(errorMessages);
+          } else {
+            throw new Error(errorData.detail);
+          }
         }
+        throw new Error("Failed to create user");
       }
-      throw new Error("Failed to create user");
-    }
+
       const createdUser = await res.json(); 
       
       // Update UI: Add new user to the list immediately
