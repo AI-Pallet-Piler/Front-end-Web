@@ -28,19 +28,26 @@ export type InventoryRow = {
 
 const LOW_STOCK_THRESHOLD = 20;
 
-// Helpers to support both single and multi-location inventory
+/**
+ * Helpers to support both single-location (legacy) and multi-location inventory.
+ * This allows gradual migration without breaking existing data.
+ */
 function getLocations(r: InventoryRow): InventoryLocation[] {
+  // If multi-location data exists, use it.
   if (r.locations?.length) return r.locations;
+  // Fallback to legacy single-location format.
   return r.location_code
     ? [{ location_code: r.location_code, quantity: r.quantity ?? 0 }]
     : [];
 }
 
 function getTotalQty(r: InventoryRow): number {
+  // Sum quantities across all locations.
   return getLocations(r).reduce((sum, l) => sum + (l.quantity ?? 0), 0);
 }
 
 function StatusBadge({ qty }: { qty: number }) {
+  // Visual indicator for low vs. normal stock levels.
   const isLow = qty <= LOW_STOCK_THRESHOLD;
   const styles = isLow
     ? "bg-orange-100 text-orange-700 border-orange-200"
@@ -54,6 +61,7 @@ function StatusBadge({ qty }: { qty: number }) {
 }
 
 export default function ViewInventory() {
+  // Data state
   const [inventory, setInventory] = useState<InventoryRow[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -64,7 +72,7 @@ export default function ViewInventory() {
   // Details modal state
   const [detailsRow, setDetailsRow] = useState<InventoryRow | null>(null);
 
-  // Fetch inventory on component mount
+  // Fetch all inventory on component mount.
   useEffect(() => {
     const fetchInventory = async () => {
       try {
@@ -84,10 +92,12 @@ export default function ViewInventory() {
     fetchInventory();
   }, []);
 
+  // Real-time search filter by product name, SKU, or location code.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return inventory;
 
+    // Search across product name, SKU, and all location codes for this inventory row.
     return inventory.filter((r) => {
       const locs = getLocations(r);
       return (
@@ -98,6 +108,7 @@ export default function ViewInventory() {
     });
   }, [inventory, search]);
 
+  // Count items below low-stock threshold for alert banner.
   const lowStockCount = useMemo(() => {
     return inventory.filter((r) => getTotalQty(r) <= LOW_STOCK_THRESHOLD).length;
   }, [inventory]);

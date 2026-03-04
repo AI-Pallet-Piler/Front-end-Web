@@ -44,6 +44,7 @@ function Badge({
 }
 
 function formatDimensions(p: Product) {
+  // readable dimensions used in product details UI.
   return `${p.length_cm} × ${p.width_cm} × ${p.height_cm} cm`;
 }
 
@@ -54,6 +55,7 @@ export default function ViewProductModal({
   product: Product | null;
   onClose: () => void;
 }) {
+  // Component is controlled by parent: only renders when a product is selected.
   if (!product) return null;
 
   return (

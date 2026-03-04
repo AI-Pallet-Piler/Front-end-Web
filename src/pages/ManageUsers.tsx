@@ -2,7 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import {Search, UserPlus, Trash2, X, Pencil, CheckCircle2, AlertTriangle,} from "lucide-react";
 import { API_BASE_URL } from "../config/api";
 
-// Interface to define the shape of user data
+/**
+ * User data as stored in backend.
+ * Includes timestamps for creation, updates, and last login.
+ */
 interface UserData {
   user_id: number;
   name: string;
@@ -24,18 +27,18 @@ type CreateUserForm = {
 };
 
 const ViewUsers = () => {
-  // State management
+  // Main data state
   const [users, setUsers] = useState<UserData[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Edit State
+  // Edit/save state
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [editPassword, setEditPassword] = useState<string>("");
   const [pendingRoleChange, setPendingRoleChange] = useState<string | null>(null);
 
-  // Create User State
+  // Create new user modal state
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [createError, setCreateError] = useState<string>("");
   const [newUser, setNewUser] = useState<CreateUserForm>({
@@ -50,7 +53,7 @@ const ViewUsers = () => {
   const [deleteTarget, setDeleteTarget] = useState<UserData | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
-  // Toast / banner state
+  // Toast notification state for feedback
   const [toast, setToast] = useState<{
     type: "success" | "error";
     message: string;
@@ -61,7 +64,7 @@ const ViewUsers = () => {
     window.setTimeout(() => setToast(null), 2500);
   };
 
-  // Fetch users on component mount
+  // Fetch all users on component mount.
   useEffect(() => {
     const fetchUsers = async () => {
       try {

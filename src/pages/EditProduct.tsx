@@ -44,6 +44,7 @@ type ProductForm = {
 const CATEGORY_OPTIONS = ["Electronics", "Industrial", "Furniture", "Chemicals", "Packaging"];
 
 function normalizeNumberInput(v: string) {
+  // Support EU decimal format (comma) and prevent negative values.
   if (v.trim() === "") return "";
   const normalized = v.replace(",", ".");
   const num = Number(normalized);
@@ -67,14 +68,15 @@ export default function EditProduct() {
   // Fetch product on component mount
   useEffect(() => {
     const fetchProduct = async () => {
-      // If we have product from router state, use it
+      // Optimization: use product from router state if available (from ViewProduct page link).
+      // This avoids unnecessary API call for a product already loaded.
       if (productFromState) {
         setProduct(productFromState);
         setIsLoading(false);
         return;
       }
 
-      // Otherwise fetch from API
+      // Fallback: if navigating directly via URL, fetch product from API.
       if (!productId) {
         setIsLoading(false);
         return;
@@ -113,10 +115,11 @@ export default function EditProduct() {
     requires_upright: false,
   });
 
-  // Update form when product loads
+  // Sync loaded product data into form for editing.
   useEffect(() => {
     if (!product) return;
 
+    // Convert numeric product fields to strings for text input typing.
     setForm({
       name: product.name ?? "",
       sku: product.sku ?? "",

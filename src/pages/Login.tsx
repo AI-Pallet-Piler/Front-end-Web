@@ -49,6 +49,7 @@ const Login: React.FC = () => {
     setIsLoading(true)
 
     try {
+      // PICKER PATH: Badge-based authentication
       if (state.role === 'picker') {
         if (!state.badgeNumber.trim()) {
           setError('Please enter your badge number')
@@ -56,6 +57,7 @@ const Login: React.FC = () => {
           return
         }
 
+        // Look up badge in user database
         const response = await fetch(`${API_BASE_URL}/v1/users/badge/${state.badgeNumber}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
@@ -73,29 +75,33 @@ const Login: React.FC = () => {
 
         const userData = await response.json()
 
-        // Validate badge API response structure
+        // Validate response has required fields
         if (!userData.role || !userData.name || !userData.id) {
           setError('Invalid response from server. Please contact support.')
           setIsLoading(false)
           return
         }
 
+        // Double-check user is actually a picker
         if (userData.role !== 'picker') {
           setError('This badge is not registered as a picker. Use Manager/Admin login.')
           setIsLoading(false)
           return
         }
 
+        // Redirect to separate picker app with badge param
         window.location.href = `${PICKER_APP_URL}/login?badge=${state.badgeNumber}&auto=true`
         return
       }
 
+      // MANAGER/ADMIN PATH: Email + password authentication
       if (!state.email || !state.password) {
         setError('Please enter email and password')
         setIsLoading(false)
         return
       }
 
+      // Send credentials to backend
       const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -118,7 +124,7 @@ const Login: React.FC = () => {
 
       const tokenData = await response.json()
       
-      // Validate login API response structure
+      // Validate token response structure
       if (!tokenData.access_token || !tokenData.refresh_token) {
         setError('Invalid response from server. Please contact support.')
         setIsLoading(false)
@@ -136,20 +142,21 @@ const Login: React.FC = () => {
         
         const userRole = payload.role.toLowerCase()
         
-        // Validate that the role is one of the expected values
+        // Ensure role is valid before storing in context
         if (!isValidRole(userRole)) {
           setError('Invalid user role. Please contact support.')
           setIsLoading(false)
           return
         }
         
+        // Pickers should use badge flow, not email/password
         if (userRole === 'picker') {
           setError('Pickers must use the Badge Number login')
           setIsLoading(false)
           return
         }
 
-        // Extract user info from token
+        // Store user in global auth context
         login(userRole, payload.email || '', parseInt(payload.sub, 10) || 0)
         navigate('/dashboard')
       } catch (err) {

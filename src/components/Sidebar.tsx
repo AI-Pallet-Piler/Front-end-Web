@@ -13,6 +13,7 @@ export function Sidebar({
   roleLabel?: string;
   onLogout?: () => void;
 }) {
+  // Build a menu for the current role only (admin/manager/picker).
   const visibleItems = navItems.filter((item) => {
     if (!item.roles) return true;
     return item.roles.includes(role);
@@ -47,6 +48,7 @@ export function Sidebar({
             <li key={item.to}>
               <NavLink
                 to={item.to}
+                // `isActive` lets us style the current route as selected.
                 className={({ isActive }) =>
                   [
                     "group flex items-center gap-4 rounded-xl px-4 py-3 transition",

@@ -83,7 +83,8 @@ export default function AddProduct() {
   }
 
   function normalizeNumberInput(v: string) {
-    // allow empty while typing
+    // Support EU decimal format (comma) and prevent negative values.
+    // Keep empty string while user is typing.
     if (v.trim() === "") return "";
     // replace comma with dot for EU decimals
     const normalized = v.replace(",", ".");
@@ -104,28 +105,34 @@ export default function AddProduct() {
     setIsSubmitting(true);
 
     try {
+      // Build API payload: convert string form fields to proper types.
       const payload = {
         name: form.name.trim(),
         sku: form.sku.trim(),
         description: form.description.trim() || null,
 
+        // Convert dimension strings to numbers (default to 0 if empty).
         length_cm: Number(form.length_cm || 0),
         width_cm: Number(form.width_cm || 0),
         height_cm: Number(form.height_cm || 0),
         weight_kg: Number(form.weight_kg || 0),
 
+        // Handling flags
         is_fragile: form.is_fragile,
         is_liquid: form.is_liquid,
         requires_upright: form.requires_upright,
         
+        // Default metadata (can be edited later)
         max_stack_layers: 10,
         pick_frequency: 0,
         popularity_score: 0,
         
+        // Create initial inventory entry
         initial_quantity: Number(form.initial_quantity || 0),
         location_code: form.location_code.trim() || null,
       };
 
+      // POST new product to backend
       const res = await fetch(`${API_BASE_URL}/v1/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -135,6 +142,7 @@ export default function AddProduct() {
       if (!res.ok) throw new Error("Failed to create product");
 
       alert("Product created successfully!");
+      // Navigate back to product list
       navigate("/products");
     } catch (error) {
       console.error(error);
