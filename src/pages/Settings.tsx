@@ -75,12 +75,13 @@ function Modal({
 }
 
 export default function Settings() {
+  // Notification preferences (currently UI-only, not persisted)
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
   const [orderNotifications, setOrderNotifications] = useState(true);
   const [emailReports, setEmailReports] = useState(false);
   const [timezone, setTimezone] = useState("UTC-5 (Eastern Time)");
 
-  // which modal is open
+  // Modal state for settings actions
   const [modal, setModal] = useState<
     null | "password" | "export" | "backups"
   >(null);

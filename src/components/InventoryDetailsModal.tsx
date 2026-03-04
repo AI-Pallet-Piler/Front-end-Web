@@ -5,6 +5,7 @@ import type { InventoryRow, InventoryLocation } from "../pages/ViewInventory";
 const LOW_STOCK_THRESHOLD = 20;
 
 function getLocations(r: InventoryRow): InventoryLocation[] {
+  // Backward compatibility: support both multi-location and legacy single-location data.
   if (r.locations?.length) return r.locations;
   return r.location_code
     ? [{ location_code: r.location_code, quantity: r.quantity ?? 0 }]
@@ -39,6 +40,7 @@ export default function InventoryDetailsModal({
   const locations = useMemo(() => (row ? getLocations(row) : []), [row]);
 
   const totalQty = useMemo(() => {
+    // Aggregate quantity from all visible locations for stock badge.
     return locations.reduce((sum, l) => sum + (l.quantity ?? 0), 0);
   }, [locations]);
 

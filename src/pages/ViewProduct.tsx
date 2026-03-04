@@ -64,7 +64,7 @@ export default function ViewProduct() {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Fetch products on component mount
+  // Fetch all products on component mount
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -84,10 +84,12 @@ export default function ViewProduct() {
     fetchProducts();
   }, []);
 
+  // Real-time search filter by name or SKU
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products;
 
+    // Search both product name and SKU fields.
     return products.filter(
       (p) => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q)
     );
@@ -99,13 +101,15 @@ export default function ViewProduct() {
     setIsDeleting(true);
 
     try {
+      // Send DELETE request to backend.
       const res = await fetch(`${API_BASE_URL}/v1/products/${deleteTarget.product_id}`, { 
         method: 'DELETE' 
       });
       
       if (!res.ok) throw new Error("Failed to delete product");
 
-      // Optimistic UI update
+      // Optimistic UI update: remove deleted product from list immediately.
+      // If API fails, error is caught below and user is alerted.
       setProducts((prev) =>
         prev.filter((p) => p.product_id !== deleteTarget.product_id)
       );

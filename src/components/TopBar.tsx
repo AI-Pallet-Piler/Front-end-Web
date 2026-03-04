@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 export default function TopBar() {
   const { user } = useAuth();
 
+  // Top bar content depends on user info (name + role).
   if (!user) return null;
 
   return (
@@ -26,6 +27,7 @@ export default function TopBar() {
         {/* User info */}
         <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl">
           {/* Avatar */}
+          {/* Use first character of name as lightweight avatar fallback. */}
           <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
             {user.name.charAt(0)}
           </div>
