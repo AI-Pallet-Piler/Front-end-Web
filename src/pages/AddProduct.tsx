@@ -132,13 +132,18 @@ export default function AddProduct() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Failed to create product");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        const message = errorData.detail || `Error ${res.status}: Failed to create product`;
+        alert(message);
+        return;
+      }
 
       alert("Product created successfully!");
       navigate("/products");
     } catch (error) {
       console.error(error);
-      alert("Failed to create product");
+      alert("Unable to connect to server. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
