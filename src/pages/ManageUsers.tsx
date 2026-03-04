@@ -116,10 +116,7 @@ const ViewUsers = () => {
       const res = await fetch(`${API_BASE_URL}/v1/users/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newUser,
-          password: "temp_default_password" // TODO: Implement secure password generation
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!res.ok) {
