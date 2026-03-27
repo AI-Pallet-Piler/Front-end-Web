@@ -28,6 +28,7 @@ type InventoryForm = {
 };
 
 function normalizeIntInput(v: string) {
+  // Keep only digits from user input and clamp below zero.
   if (v.trim() === "") return "";
   const cleaned = v.replace(/[^\d]/g, "");
   const num = Number(cleaned);
@@ -50,7 +51,7 @@ export default function EditInventoryModal({
 }) {
   const [form, setForm] = useState<InventoryForm>({ locations: [] });
 
-  // ✅ NEW: confirmation modal state (index of location to remove)
+  //  confirmation modal state (index of location to remove)
   const [removeIndex, setRemoveIndex] = useState<number | null>(null);
 
   // init/reset when modal opens
@@ -75,7 +76,7 @@ export default function EditInventoryModal({
       })),
     });
 
-    // ✅ reset confirm state when opening
+    // reset confirm state when opening
     setRemoveIndex(null);
   }, [row]);
 
@@ -117,6 +118,7 @@ export default function EditInventoryModal({
       return { ok: false, message: "Add at least one location." };
     }
 
+    // Each row needs both fields before save is allowed.
     for (const l of form.locations) {
       if (!l.location_code.trim()) return { ok: false, message: "Location code is required." };
       if (l.quantity.trim() === "") return { ok: false, message: "Quantity is required." };
@@ -132,6 +134,7 @@ export default function EditInventoryModal({
   }, [form.locations]);
 
   function updateLocation(index: number, patch: Partial<FormLocation>) {
+    // Immutable update by index to keep React state predictable.
     setForm((prev) => {
       const copy = [...prev.locations];
       copy[index] = { ...copy[index], ...patch };
@@ -156,12 +159,12 @@ export default function EditInventoryModal({
     }));
   }
 
-  // ✅ CHANGED: now only opens confirmation modal
+  // only opens confirmation modal
   function removeLocation(index: number) {
     setRemoveIndex(index);
   }
 
-  // ✅ NEW: confirm actual remove
+  // confirm actual remove
   function confirmRemoveLocation() {
     if (removeIndex === null) return;
 
@@ -177,6 +180,7 @@ export default function EditInventoryModal({
     e.preventDefault();
     if (!row || !validation.ok) return;
 
+    // API-ready payload shape for multi-location inventory save.
     const payload = {
       inventory_id: (row as any).inventory_id,
       locations: form.locations.map((l) => ({
@@ -461,7 +465,7 @@ export default function EditInventoryModal({
         </div>
       </div>
 
-      {/* ✅ CONFIRM REMOVE LOCATION MODAL (same style as user delete) */}
+      {/* CONFIRM REMOVE LOCATION MODAL (same style as user delete) */}
       {removeIndex !== null && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4"

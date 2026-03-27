@@ -38,6 +38,7 @@ function Badge({
 }
 
 function formatDimensions(p: Product) {
+  // Shared display format used across product modals/cards.
   return `${p.length_cm} × ${p.width_cm} × ${p.height_cm} cm`;
 }
 
@@ -56,6 +57,7 @@ export default function DeleteProductModal({
   onConfirm: () => void;
   warning?: ReactNode;
 }) {
+  // Render nothing when closed or if no product is selected.
   if (!isOpen || !product) return null;
 
   return (

@@ -1,4 +1,5 @@
 export default function Footer() {
+  // reusable footer, Keep year dynamic so footer stays current without manual updates.
   const year = new Date().getFullYear();
 
   return (

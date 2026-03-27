@@ -8,6 +8,7 @@ const year = new Date().getFullYear();
 const Layout = () => {
   const { user, logout } = useAuth();
 
+  // Safety check: the layout shell should only render for authenticated users.
   if (!user) return <Navigate to="/login" replace />;
 
   return (
@@ -24,6 +25,7 @@ const Layout = () => {
 
         {/* MAIN CONTENT */}
         <main className="flex-1 px-10 py-8 overflow-y-auto">
+          {/* `Outlet` renders the active page matched by nested routes in App.tsx */}
           <div className="max-w-6xl">
             <Outlet />
           </div>

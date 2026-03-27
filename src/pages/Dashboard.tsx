@@ -44,14 +44,17 @@ type InventoryItem = {
 const LOW_STOCK_THRESHOLD = 10;
 
 export default function Dashboard() {
+  // Dashboard data
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch all data on component mount using Promise.all for efficiency.
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Parallel fetch: orders, products, and inventory.
         const [ordersRes, productsRes, inventoryRes] = await Promise.all([
           fetch(`${API_BASE_URL}/v1/orders`),
           fetch(`${API_BASE_URL}/v1/products`),
@@ -82,7 +85,9 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
+  // Derive KPI stats from fetched data.
   const stats = useMemo(() => {
+    // Count orders that are still active.
     const activeOrders = orders.filter(
       (o) =>
         o.status === OrderStatus.NEW ||
@@ -100,6 +105,7 @@ export default function Dashboard() {
       return completedDate.getTime() === today.getTime();
     }).length;
 
+    // Flag items with quantity between 1 and LOW_STOCK_THRESHOLD.
     const lowStockItems = inventory.filter(
       (item) => item.quantity > 0 && item.quantity < LOW_STOCK_THRESHOLD
     ).length;
